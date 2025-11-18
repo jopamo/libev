@@ -191,20 +191,27 @@ pkgconfig.generate(
   subdirs: '.',
 )
 
-system_libev_dep = disabler()
-system_libev_version = ''
-pkg_config_dep = dependency('libev', required: false)
-if pkg_config_dep.found()
-  system_libev_dep = pkg_config_dep
-  system_libev_version = pkg_config_dep.version()
-endif
+orig_inc = include_directories('libev-4.33')
+orig_sources = files(
+  'libev-4.33/ev.c',
+  'libev-4.33/event.c',
+)
 
-if not system_libev_dep.found()
-  sys_lib = cc.find_library('ev', required: false)
-  if sys_lib.found() and cc.has_header('ev.h')
-    system_libev_dep = declare_dependency(dependencies: sys_lib)
-    system_libev_version = 'system'
-  endif
-endif
+orig_libev = library(
+  'ev_baseline',
+  orig_sources,
+  include_directories: [orig_inc, root_inc],
+  dependencies: lib_deps,
+  version: '4.0.0',
+  soversion: '4',
+  install: false,
+)
+
+orig_libev_dep = declare_dependency(
+  link_with: orig_libev,
+  include_directories: [orig_inc, root_inc],
+  dependencies: lib_deps,
+  version: '4.33',
+)
 
 subdir('tests')
