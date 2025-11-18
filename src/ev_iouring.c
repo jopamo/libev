@@ -81,7 +81,6 @@
 /* TODO: use internal TIMEOUT */
 /* TODO: take advantage of single mmap, NODROP etc. */
 /* TODO: resize cq/sq size independently */
-
 #include <sys/timerfd.h>
 #include <sys/mman.h>
 #include <poll.h>
@@ -219,12 +218,17 @@ inline_size int evsys_io_uring_enter(int fd,
 #define EV_SQES ((struct io_uring_sqe*)iouring_sqes)
 #define EV_CQES ((struct io_uring_cqe*)((char*)iouring_cq_ring + iouring_cq_cqes))
 
+/* feature flags and mapping mode */
+static unsigned int iouring_features;
+static int iouring_single_mmap;
+
 inline_speed int iouring_enter(EV_P_ ev_tstamp timeout) {
   int res;
 
   EV_RELEASE_CB;
 
-  res = evsys_io_uring_enter(iouring_fd, iouring_to_submit, 1, timeout > EV_TS_CONST(0.) ? IORING_ENTER_GETEVENTS : 0,
+  res = evsys_io_uring_enter(iouring_fd, iouring_to_submit, 1,
+                             timeout > EV_TS_CONST(0.) ? IORING_ENTER_GETEVENTS : 0,
                              0, 0);
 
   EV_ASSERT_MSG("libev: io_uring_enter did not consume all sqes", (res < 0 || res == (int)iouring_to_submit));
@@ -299,10 +303,15 @@ ecb_cold static void iouring_internal_destroy(EV_P) {
   close(iouring_tfd);
   close(iouring_fd);
 
-  if (iouring_sq_ring != MAP_FAILED)
+  if (iouring_sq_ring != MAP_FAILED) {
     munmap(iouring_sq_ring, iouring_sq_ring_size);
-  if (iouring_cq_ring != MAP_FAILED)
+    if (iouring_single_mmap)
+      iouring_cq_ring = MAP_FAILED;
+  }
+
+  if (!iouring_single_mmap && iouring_cq_ring != MAP_FAILED)
     munmap(iouring_cq_ring, iouring_cq_ring_size);
+
   if (iouring_sqes != MAP_FAILED)
     munmap(iouring_sqes, iouring_sqes_size);
 
@@ -310,10 +319,14 @@ ecb_cold static void iouring_internal_destroy(EV_P) {
     ev_ref(EV_A);
     ev_io_stop(EV_A_ & iouring_tfd_w);
   }
+
+  iouring_single_mmap = 0;
+  iouring_features = 0;
 }
 
 ecb_cold static int iouring_internal_init(EV_P) {
-  struct io_uring_params params = {0};
+  struct io_uring_params params;
+  unsigned entries;
 
   iouring_to_submit = 0;
 
@@ -321,23 +334,31 @@ ecb_cold static int iouring_internal_init(EV_P) {
   iouring_sq_ring = MAP_FAILED;
   iouring_cq_ring = MAP_FAILED;
   iouring_sqes = MAP_FAILED;
+  iouring_single_mmap = 0;
+  iouring_features = 0;
 
   if (!have_monotonic) /* cannot really happen, but what if11 */
     return -1;
 
-  for (;;) {
-    iouring_fd = evsys_io_uring_setup(iouring_entries, &params);
+  entries = iouring_entries;
 
-    if (iouring_fd >= 0)
+  for (;;) {
+    memset(&params, 0, sizeof(params));
+
+    /* request a larger CQ than SQ using independent sizing */
+    params.flags = IORING_SETUP_CQSIZE;
+    params.cq_entries = entries * 2;
+
+    iouring_fd = evsys_io_uring_setup(entries, &params);
+
+    if (iouring_fd >= 0) {
+      /* kernel may clamp sq_entries, remember the real value */
+      iouring_entries = params.sq_entries;
       break; /* yippie */
+    }
 
     if (errno != EINVAL)
       return -1; /* we failed */
-
-#if TODO
-    if ((~params.features) & (IORING_FEAT_NODROP | IORING_FEATURE_SINGLE_MMAP | IORING_FEAT_SUBMIT_STABLE))
-      return -1; /* we require the above features */
-#endif
 
     /* EINVAL: lots of possible reasons, but maybe
      * it is because we hit the unqueryable hardcoded size limit
@@ -348,22 +369,48 @@ ecb_cold static int iouring_internal_init(EV_P) {
       return -1;
 
     /* first time we hit EINVAL? assume we hit the limit, so go back and retry */
-    iouring_entries >>= 1;
-    iouring_max_entries = iouring_entries;
+    entries >>= 1;
+    iouring_entries = entries;
+    iouring_max_entries = entries;
   }
 
+  iouring_features = params.features;
   iouring_sq_ring_size = params.sq_off.array + params.sq_entries * sizeof(unsigned);
   iouring_cq_ring_size = params.cq_off.cqes + params.cq_entries * sizeof(struct io_uring_cqe);
   iouring_sqes_size = params.sq_entries * sizeof(struct io_uring_sqe);
 
-  iouring_sq_ring =
-      mmap(0, iouring_sq_ring_size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, iouring_fd, IORING_OFF_SQ_RING);
-  iouring_cq_ring =
-      mmap(0, iouring_cq_ring_size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, iouring_fd, IORING_OFF_CQ_RING);
-  iouring_sqes =
-      mmap(0, iouring_sqes_size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, iouring_fd, IORING_OFF_SQES);
+  /* prefer single mmap layout when kernel supports it */
+  if (params.features & IORING_FEAT_SINGLE_MMAP) {
+    size_t ring_size = iouring_sq_ring_size;
 
-  if (iouring_sq_ring == MAP_FAILED || iouring_cq_ring == MAP_FAILED || iouring_sqes == MAP_FAILED)
+    if (iouring_cq_ring_size > ring_size)
+      ring_size = iouring_cq_ring_size;
+
+    iouring_sq_ring =
+      mmap(0, ring_size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, iouring_fd, IORING_OFF_SQ_RING);
+
+    if (iouring_sq_ring == MAP_FAILED)
+      return -1;
+
+    iouring_cq_ring = iouring_sq_ring;
+    iouring_sq_ring_size = ring_size;
+    iouring_cq_ring_size = ring_size;
+    iouring_single_mmap = 1;
+  }
+  else {
+    iouring_sq_ring =
+      mmap(0, iouring_sq_ring_size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, iouring_fd, IORING_OFF_SQ_RING);
+    iouring_cq_ring =
+      mmap(0, iouring_cq_ring_size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, iouring_fd, IORING_OFF_CQ_RING);
+
+    if (iouring_sq_ring == MAP_FAILED || iouring_cq_ring == MAP_FAILED)
+      return -1;
+  }
+
+  iouring_sqes =
+    mmap(0, iouring_sqes_size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, iouring_fd, IORING_OFF_SQES);
+
+  if (iouring_sqes == MAP_FAILED)
     return -1;
 
   iouring_sq_head = params.sq_off.head;
@@ -495,7 +542,8 @@ inline_size void iouring_process_cqe(EV_P_ struct io_uring_cqe* cqe) {
 
   /* feed events, we do not expect or handle POLLNVAL */
   fd_event(EV_A_ fd,
-           (res & (POLLOUT | POLLERR | POLLHUP) ? EV_WRITE : 0) | (res & (POLLIN | POLLERR | POLLHUP) ? EV_READ : 0));
+           (res & (POLLOUT | POLLERR | POLLHUP) ? EV_WRITE : 0) |
+           (res & (POLLIN | POLLERR | POLLHUP) ? EV_READ : 0));
 
   /* io_uring is oneshot, so we need to re-arm the fd next iteration */
   /* this also means we usually have to do at least one syscall per iteration */
@@ -518,6 +566,14 @@ ecb_cold static void iouring_overflow(EV_P) {
   /*EV_CQ_VAR (overflow) = 0;*/ /* need to do this if we keep the state and poll manually */
 
   fd_rearm_all(EV_A);
+
+  /* if the kernel guarantees NODROP, do not tear down the ring,
+   * just clear the overflow counter and keep going
+   */
+  if (iouring_features & IORING_FEAT_NODROP) {
+    EV_CQ_VAR(overflow) = 0;
+    return;
+  }
 
   /* we double the size until we hit the hard-to-probe maximum */
   if (!iouring_max_entries) {
