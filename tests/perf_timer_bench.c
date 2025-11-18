@@ -1,17 +1,22 @@
 #include <ev.h>
+
 #include "perf_bench_common.h"
 
 static int target_iterations;
-static int idle_hits;
+static int timer_hits;
 
-static void idle_cb(EV_P_ ev_idle* w, int revents) {
+static void timer_cb(EV_P_ ev_timer* w, int revents) {
   (void)w;
   (void)revents;
 
-  ++idle_hits;
-  if (idle_hits >= target_iterations) {
+  ++timer_hits;
+
+  if (timer_hits >= target_iterations) {
     ev_break(EV_A_ EVBREAK_ALL);
+    return;
   }
+
+  ev_timer_again(EV_A_ w);
 }
 
 int main(void) {
@@ -22,14 +27,15 @@ int main(void) {
   }
 
   target_iterations = bench_read_iterations();
-  idle_hits = 0;
+  timer_hits = 0;
 
-  ev_idle idle_watcher;
-  ev_idle_init(&idle_watcher, idle_cb);
-  ev_idle_start(loop, &idle_watcher);
+  ev_timer timer_watcher;
+  ev_timer_init(&timer_watcher, timer_cb, 0., 0.);
+  ev_timer_start(loop, &timer_watcher);
 
   struct timespec start;
   struct timespec end;
+
   if (bench_clock_now(&start) != 0) {
     perror("clock_gettime(START)");
     return 2;
@@ -45,7 +51,7 @@ int main(void) {
   ev_loop_destroy(loop);
 
   double seconds = bench_elapsed_seconds(&start, &end);
-  bench_print_result("idle", target_iterations, seconds, ev_version_major(), ev_version_minor());
+  bench_print_result("timer", target_iterations, seconds, ev_version_major(), ev_version_minor());
 
   return 0;
 }

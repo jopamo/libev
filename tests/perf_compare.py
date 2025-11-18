@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
+import argparse
 import os
 import subprocess
 import sys
-from typing import Dict
+from typing import Dict, List
 
 
 ITER_ENV = "LIBEV_BENCH_ITERATIONS"
@@ -38,33 +39,66 @@ def run_benchmark(path: str, env: Dict[str, str]) -> Dict[str, str]:
   return parse_result_line(proc.stdout)
 
 
-def main(argv: list[str]) -> int:
-  if len(argv) < 3:
-    print(f"usage: {argv[0]} <local-bin> <baseline-bin> [tolerance]", file=sys.stderr)
-    return 2
+def parse_args(argv: List[str]) -> argparse.Namespace:
+  parser = argparse.ArgumentParser(description="Compare libev benchmark performance.")
+  parser.add_argument("local_bin", help="Path to the benchmark built against the local libev.")
+  parser.add_argument("baseline_bin", help="Path to the benchmark built against the baseline libev.")
+  parser.add_argument(
+    "legacy_tolerance",
+    nargs="?",
+    help=argparse.SUPPRESS,
+  )
+  parser.add_argument(
+    "--tolerance",
+    type=float,
+    default=None,
+    help="Minimum acceptable local/baseline ratio (defaults to 0.70 or the legacy positional value).",
+  )
+  parser.add_argument(
+    "--label",
+    default=None,
+    help="Scenario label included in the output to aid debugging.",
+  )
 
-  local_bin = argv[1]
-  baseline_bin = argv[2]
-  tolerance = float(argv[3]) if len(argv) > 3 else DEFAULT_TOLERANCE
+  args = parser.parse_args(argv[1:])
+
+  if args.tolerance is not None and args.legacy_tolerance is not None:
+    parser.error("Specify tolerance either positionally or with --tolerance, not both.")
+
+  if args.tolerance is not None:
+    tolerance = args.tolerance
+  elif args.legacy_tolerance is not None:
+    tolerance = float(args.legacy_tolerance)
+  else:
+    tolerance = DEFAULT_TOLERANCE
+
+  args.tolerance = tolerance
+  return args
+
+
+def main(argv: list[str]) -> int:
+  args = parse_args(argv)
 
   env = os.environ.copy()
   env.setdefault(ITER_ENV, "200000")
 
-  local_result = run_benchmark(local_bin, env)
-  baseline_result = run_benchmark(baseline_bin, env)
+  local_result = run_benchmark(args.local_bin, env)
+  baseline_result = run_benchmark(args.baseline_bin, env)
 
   local_rate = float(local_result["per_second"])
   baseline_rate = float(baseline_result["per_second"])
   ratio = local_rate / baseline_rate if baseline_rate > 0 else float("inf")
 
-  print(f"local libev v{local_result.get('version', '?')}: {local_rate:.0f} iterations/sec")
-  print(f"baseline libev v{baseline_result.get('version', '?')}: {baseline_rate:.0f} iterations/sec")
-  print(f"ratio (local/baseline): {ratio:.2f}")
+  label_prefix = f"[{args.label}] " if args.label else ""
 
-  if ratio < tolerance:
+  print(f"{label_prefix}local libev v{local_result.get('version', '?')}: {local_rate:.0f} iterations/sec")
+  print(f"{label_prefix}baseline libev v{baseline_result.get('version', '?')}: {baseline_rate:.0f} iterations/sec")
+  print(f"{label_prefix}ratio (local/baseline): {ratio:.2f}")
+
+  if ratio < args.tolerance:
     delta = (1.0 - ratio) * 100.0
     print(
-      f"local library is {delta:.1f}% slower than baseline (tolerance {tolerance:.2f})",
+      f"{label_prefix}local library is {delta:.1f}% slower than baseline (tolerance {args.tolerance:.2f})",
       file=sys.stderr,
     )
     return 1
