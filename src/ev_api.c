@@ -1185,7 +1185,11 @@ ecb_noinline void ev_io_start(EV_P_ ev_io* w) EV_NOEXCEPT {
   if (ecb_expect_false(ev_is_active(w)))
     return;
 
-  EV_ASSERT_MSG("libev: ev_io_start called with illegal event mask", !(w->events & ~(EV_READ | EV_WRITE)));
+  /* Some callers built against mismatched headers accidentally pass in extra bits.
+     Clamp to the valid EV_READ/EV_WRITE mask instead of aborting to stay
+     compatible with consumers such as picom that mix libev builds. */
+  if (ecb_expect_false(w->events & ~(EV_READ | EV_WRITE)))
+    w->events &= EV_READ | EV_WRITE;
 
   int needs_fdset = w->fd & EV__IOFDSET;
   int fd = ev_io_fd(w);
