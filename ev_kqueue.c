@@ -42,6 +42,8 @@
 #include <sys/event.h>
 #include <string.h>
 #include <errno.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 inline_speed void kqueue_change(EV_P_ int fd, int filter, int flags, int fflags) {
   ++kqueue_changecnt;
@@ -78,7 +80,8 @@ static void kqueue_modify(EV_P_ int fd, int oev, int nev) {
 }
 
 static void kqueue_poll(EV_P_ ev_tstamp timeout) {
-  int res, i;
+  int res;
+  int i;
   struct timespec ts;
 
   /* need to resize so there is enough space for errors */
@@ -101,13 +104,17 @@ static void kqueue_poll(EV_P_ ev_tstamp timeout) {
     return;
   }
 
+  if (!res)
+    return;
+
   for (i = 0; i < res; ++i) {
-    int fd = kqueue_events[i].ident;
+    struct kevent* kev = &kqueue_events[i];
+    int fd = (int)kev->ident;
 
-    if (ecb_expect_false(kqueue_events[i].flags & EV_ERROR)) {
-      int err = kqueue_events[i].data;
+    if (ecb_expect_false(kev->flags & EV_ERROR)) {
+      int err = (int)kev->data;
 
-      /* we are only interested in errors for fds that we are interested in :) */
+      /* we are only interested in errors for fds that we are interested in */
       if (anfds[fd].events) {
         if (err == ENOENT) /* resubmit changes on ENOENT */
           kqueue_modify(EV_A_ fd, 0, anfds[fd].events);
@@ -127,10 +134,12 @@ static void kqueue_poll(EV_P_ ev_tstamp timeout) {
         }
       }
     }
-    else
-      fd_event(EV_A_ fd, kqueue_events[i].filter == EVFILT_READ    ? EV_READ
-                         : kqueue_events[i].filter == EVFILT_WRITE ? EV_WRITE
-                                                                   : 0);
+    else {
+      int events = kev->filter == EVFILT_READ ? EV_READ : kev->filter == EVFILT_WRITE ? EV_WRITE : 0;
+
+      if (events)
+        fd_event(EV_A_ fd, events);
+    }
   }
 
   if (ecb_expect_false(res == kqueue_eventmax)) {
@@ -168,13 +177,14 @@ inline_size void kqueue_destroy(EV_P) {
 }
 
 inline_size void kqueue_fork(EV_P) {
-  /* some BSD kernels don't just destroy the kqueue itself,
+  /*
+   * some BSD kernels don't just destroy the kqueue itself,
    * but also close the fd, which isn't documented, and
-   * impossible to support properly.
+   * impossible to support properly
    * we remember the pid of the kqueue call and only close
-   * the fd if the pid is still the same.
+   * the fd if the pid is still the same
    * this leaks fds on sane kernels, but BSD interfaces are
-   * notoriously buggy and rarely get fixed.
+   * notoriously buggy and rarely get fixed
    */
   pid_t newpid = getpid();
 
