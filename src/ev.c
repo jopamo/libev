@@ -214,6 +214,8 @@
 #include <time.h>
 #include <limits.h>
 
+#define EV_ASSERT_MSG(msg, cond) assert((cond) && (msg))
+
 #include <signal.h>
 
 #ifdef EV_H
@@ -578,7 +580,7 @@ struct signalfd_siginfo {
  * This value is good at least till the year 4000.
  */
 #define MIN_INTERVAL 0.0001220703125 /* 1/2**13, good till 4000 */
-/*#define MIN_INTERVAL  0.00000095367431640625 /* 1/2**20, good till 2200 */
+/* #define MIN_INTERVAL  0.00000095367431640625 -- 1/2**20, good till 2200 */
 
 #define MIN_TIMEJUMP 1.      /* minimum timejump that gets detected (if monotonic clock available) */
 #define MAX_BLOCKTIME 59.743 /* never wait longer than this time (to detect time jumps) */
@@ -1676,8 +1678,8 @@ ecb_function_ ecb_const uint32_t ecb_binary16_to_binary32(uint32_t x) {
 
 ecb_function_ ecb_const uint16_t ecb_binary32_to_binary16(uint32_t x);
 ecb_function_ ecb_const uint16_t ecb_binary32_to_binary16(uint32_t x) {
-  unsigned int s = (x >> 16) & 0x00008000;                /* sign bit, the easy part */
-  unsigned int e = ((x >> 23) & 0x000000ff) - (127 - 15); /* the desired exponent */
+  unsigned int s = (x >> 16) & 0x00008000;            /* sign bit, the easy part */
+  int e = (int)((x >> 23) & 0x000000ff) - (127 - 15); /* the desired exponent */
   unsigned int m = x & 0x007fffff;
 
   x &= 0x7fffffff;
@@ -2296,12 +2298,17 @@ struct ev_loop {
 #include "ev_wrap.h"
 
 static struct ev_loop default_loop_struct;
-EV_API_DECL struct ev_loop* ev_default_loop_ptr =
-    0; /* needs to be initialised to make it a definition despite extern */
+#ifdef EV_API_STATIC
+#define EV_API_DECL_DEF static
+#else
+#define EV_API_DECL_DEF
+#endif
+
+EV_API_DECL_DEF struct ev_loop* ev_default_loop_ptr = 0;
 
 #else
 
-EV_API_DECL ev_tstamp ev_rt_now = EV_TS_CONST(0.); /* needs to be initialised to make it a definition despite extern */
+EV_API_DECL_DEF ev_tstamp ev_rt_now = EV_TS_CONST(0.);
 #define VAR(name, decl) static decl;
 #include "ev_vars.h"
 #undef VAR
@@ -2401,7 +2408,7 @@ inline_size int array_nextsize(int elem, int cur, int cnt) {
   while (cnt > ncur);
 
   /* if size is large, round to MALLOC_ROUND - 4 * longs to accommodate malloc overhead */
-  if (elem * ncur > MALLOC_ROUND - sizeof(void*) * 4) {
+  if ((size_t)(elem * ncur) > MALLOC_ROUND - sizeof(void*) * 4) {
     ncur *= elem;
     ncur = (ncur + elem + (MALLOC_ROUND - 1) + sizeof(void*) * 4) & ~(MALLOC_ROUND - 1);
     ncur = ncur - sizeof(void*) * 4;
@@ -2444,7 +2451,11 @@ ecb_noinline ecb_cold static void* array_realloc(int elem, void* base, int* cur,
 /*****************************************************************************/
 
 /* dummy callback for pending events */
-ecb_noinline static void pendingcb(EV_P_ ev_prepare* w, int revents) {}
+ecb_noinline static void pendingcb(EV_P_ ev_prepare* w, int revents) {
+  (void)loop;
+  (void)w;
+  (void)revents;
+}
 
 ecb_noinline void ev_feed_event(EV_P_ void* w, int revents) EV_NOEXCEPT {
   W w_ = (W)w;
@@ -2536,7 +2547,8 @@ inline_size void fd_reify(EV_P) {
       if (handle != anfd->handle) {
         unsigned long arg;
 
-        assert(("libev: only socket fds supported in this configuration", ioctlsocket(handle, FIONREAD, &arg) == 0));
+        EV_ASSERT_MSG("libev: only socket fds supported in this configuration",
+                      ioctlsocket(handle, FIONREAD, &arg) == 0);
 
         /* handle changed, but fd didn't - we need to do it in two steps */
         backend_modify(EV_A_ fd, anfd->events, 0);
@@ -2900,6 +2912,8 @@ inline_speed void evpipe_write(EV_P_ EV_ATOMIC_T* flag) {
 static void pipecb(EV_P_ ev_io* iow, int revents) {
   int i;
 
+  (void)iow;
+
   if (revents & EV_READ) {
 #if EV_USE_EVENTFD
     if (evpipe[0] < 0) {
@@ -3006,6 +3020,9 @@ ecb_noinline void ev_feed_signal_event(EV_P_ int signum) EV_NOEXCEPT {
 static void sigfdcb(EV_P_ ev_io* iow, int revents) {
   struct signalfd_siginfo si[2], *sip; /* these structs are big */
 
+  (void)iow;
+  (void)revents;
+
   for (;;) {
     ssize_t res = read(sigfd, si, sizeof(si));
 
@@ -3056,6 +3073,8 @@ inline_speed void child_reap(EV_P_ int chain, int pid, int status) {
 static void childcb(EV_P_ ev_signal* sw, int revents) {
   int pid, status;
 
+  (void)revents;
+
   /* some systems define WCONTINUED but then fail to support it (linux 2.4) */
   if (0 >= (pid = waitpid(-1, &status, WNOHANG | WUNTRACED | WCONTINUED)))
     if (!WCONTINUED || errno != EINVAL || 0 >= (pid = waitpid(-1, &status, WNOHANG | WUNTRACED)))
@@ -3080,6 +3099,9 @@ static void periodics_reschedule(EV_P);
 
 static void timerfdcb(EV_P_ ev_io* iow, int revents) {
   struct itimerspec its = {0};
+
+  (void)iow;
+  (void)revents;
 
   its.it_value.tv_sec = ev_rt_now + (int)MAX_BLOCKTIME2;
   timerfd_settime(timerfd, TFD_TIMER_ABSTIME | TFD_TIMER_CANCEL_ON_SET, &its, 0);
@@ -3584,19 +3606,19 @@ ecb_cold struct ev_loop* ev_loop_new(unsigned int flags) EV_NOEXCEPT {
 
 #if EV_VERIFY
 ecb_noinline ecb_cold static void verify_watcher(EV_P_ W w) {
-  assert(("libev: watcher has invalid priority", ABSPRI(w) >= 0 && ABSPRI(w) < NUMPRI));
+  EV_ASSERT_MSG("libev: watcher has invalid priority", ABSPRI(w) >= 0 && ABSPRI(w) < NUMPRI);
 
   if (w->pending)
-    assert(("libev: pending watcher not on pending queue", pendings[ABSPRI(w)][w->pending - 1].w == w));
+    EV_ASSERT_MSG("libev: pending watcher not on pending queue", pendings[ABSPRI(w)][w->pending - 1].w == w);
 }
 
 ecb_noinline ecb_cold static void verify_heap(EV_P_ ANHE* heap, int N) {
   int i;
 
   for (i = HEAP0; i < N + HEAP0; ++i) {
-    assert(("libev: active index mismatch in heap", ev_active(ANHE_w(heap[i])) == i));
-    assert(("libev: heap condition violated", i == HEAP0 || ANHE_at(heap[HPARENT(i)]) <= ANHE_at(heap[i])));
-    assert(("libev: heap at cache mismatch", ANHE_at(heap[i]) == ev_at(ANHE_w(heap[i]))));
+    EV_ASSERT_MSG("libev: active index mismatch in heap", ev_active(ANHE_w(heap[i])) == i);
+    EV_ASSERT_MSG("libev: heap condition violated", i == HEAP0 || ANHE_at(heap[HPARENT(i)]) <= ANHE_at(heap[i]));
+    EV_ASSERT_MSG("libev: heap at cache mismatch", ANHE_at(heap[i]) == ev_at(ANHE_w(heap[i])));
 
     verify_watcher(EV_A_(W) ANHE_w(heap[i]));
   }
@@ -3604,7 +3626,7 @@ ecb_noinline ecb_cold static void verify_heap(EV_P_ ANHE* heap, int N) {
 
 ecb_noinline ecb_cold static void array_verify(EV_P_ W* ws, int cnt) {
   while (cnt--) {
-    assert(("libev: active index mismatch", ev_active(ws[cnt]) == cnt + 1));
+    EV_ASSERT_MSG("libev: active index mismatch", ev_active(ws[cnt]) == cnt + 1);
     verify_watcher(EV_A_ ws[cnt]);
   }
 }
@@ -3620,7 +3642,7 @@ void ecb_cold ev_verify(EV_P) EV_NOEXCEPT {
 
   assert(fdchangemax >= fdchangecnt);
   for (i = 0; i < fdchangecnt; ++i)
-    assert(("libev: negative fd in fdchanges", fdchanges[i] >= 0));
+    EV_ASSERT_MSG("libev: negative fd in fdchanges", fdchanges[i] >= 0);
 
   assert(anfdmax >= 0);
   for (i = 0; i < anfdmax; ++i) {
@@ -3630,12 +3652,12 @@ void ecb_cold ev_verify(EV_P) EV_NOEXCEPT {
       verify_watcher(EV_A_(W) w);
 
       if (j++ & 1) {
-        assert(("libev: io watcher list contains a loop", w != w2));
+        EV_ASSERT_MSG("libev: io watcher list contains a loop", w != w2);
         w2 = w2->next;
       }
 
-      assert(("libev: inactive fd watcher on anfd list", ev_active(w) == 1));
-      assert(("libev: fd mismatch between watcher and anfd", ((ev_io*)w)->fd == i));
+      EV_ASSERT_MSG("libev: inactive fd watcher on anfd list", ev_active(w) == 1);
+      EV_ASSERT_MSG("libev: fd mismatch between watcher and anfd", ((ev_io*)w)->fd == i);
     }
   }
 
@@ -3794,7 +3816,8 @@ inline_size void timers_reify(EV_P) {
         if (ev_at(w) < mn_now)
           ev_at(w) = mn_now;
 
-        assert(("libev: negative ev_timer repeat value found while processing timers", w->repeat > EV_TS_CONST(0.)));
+        EV_ASSERT_MSG("libev: negative ev_timer repeat value found while processing timers",
+                      w->repeat > EV_TS_CONST(0.));
 
         ANHE_at_cache(timers[HEAP0]);
         downheap(timers, timercnt, HEAP0);
@@ -3846,7 +3869,7 @@ inline_size void periodics_reify(EV_P) {
       if (w->reschedule_cb) {
         ev_at(w) = w->reschedule_cb(w, ev_rt_now);
 
-        assert(("libev: ev_periodic reschedule callback returned time in the past", ev_at(w) >= ev_rt_now));
+        EV_ASSERT_MSG("libev: ev_periodic reschedule callback returned time in the past", ev_at(w) >= ev_rt_now);
 
         ANHE_at_cache(periodics[HEAP0]);
         downheap(periodics, periodiccnt, HEAP0);
@@ -3969,7 +3992,7 @@ int ev_run(EV_P_ int flags) {
   ++loop_depth;
 #endif
 
-  assert(("libev: ev_loop recursion during release detected", loop_done != EVBREAK_RECURSE));
+  EV_ASSERT_MSG("libev: ev_loop recursion during release detected", loop_done != EVBREAK_RECURSE);
 
   loop_done = EVBREAK_CANCEL;
 
@@ -4014,6 +4037,31 @@ int ev_run(EV_P_ int flags) {
 
     /* update fd-related kernel structures */
     fd_reify(EV_A);
+
+#if EV_IDLE_ENABLE
+    /* fast-path idle-only loops: skip kernel polling when nothing else is active */
+    if (ecb_expect_false(idleall && !activeio && !fdchangecnt && !timercnt
+#if EV_PERIODIC_ENABLE
+                         && !periodiccnt
+#endif
+                         )) {
+      time_update(EV_A_ EV_TS_CONST(EV_TSTAMP_HUGE));
+
+#if EV_FEATURE_API
+      ++loop_count;
+#endif
+
+      idle_reify(EV_A);
+
+#if EV_CHECK_ENABLE
+      if (ecb_expect_false(checkcnt))
+        queue_events(EV_A_(W*) checks, checkcnt, EV_CHECK);
+#endif
+
+      EV_INVOKE_PENDING;
+      continue;
+    }
+#endif
 
     /* calculate blocking time */
     {
@@ -4097,7 +4145,7 @@ int ev_run(EV_P_ int flags) {
 
       ECB_MEMORY_FENCE_ACQUIRE;
       if (pipe_write_skipped) {
-        assert(("libev: pipe_w not active, but pipe not written", ev_is_active(&pipe_w)));
+        EV_ASSERT_MSG("libev: pipe_w not active, but pipe not written", ev_is_active(&pipe_w));
         ev_feed_event(EV_A_ & pipe_w, EV_CUSTOM);
       }
 
@@ -4209,6 +4257,9 @@ int ev_clear_pending(EV_P_ void* w) EV_NOEXCEPT {
 
 inline_size void pri_adjust(EV_P_ W w) {
   int pri = ev_priority(w);
+
+  (void)loop;
+
   pri = pri < EV_MINPRI ? EV_MINPRI : pri;
   pri = pri > EV_MAXPRI ? EV_MAXPRI : pri;
   ev_set_priority(w, pri);
@@ -4233,22 +4284,24 @@ ecb_noinline void ev_io_start(EV_P_ ev_io* w) EV_NOEXCEPT {
   if (ecb_expect_false(ev_is_active(w)))
     return;
 
-  assert(("libev: ev_io_start called with negative fd", fd >= 0));
-  assert(("libev: ev_io_start called with illegal event mask", !(w->events & ~(EV__IOFDSET | EV_READ | EV_WRITE))));
+  EV_ASSERT_MSG("libev: ev_io_start called with negative fd", fd >= 0);
+  EV_ASSERT_MSG("libev: ev_io_start called with illegal event mask",
+                !(w->events & ~(EV__IOFDSET | EV_READ | EV_WRITE)));
 
 #if EV_VERIFY >= 2
-  assert(("libev: ev_io_start called on watcher with invalid fd", fd_valid(fd)));
+  EV_ASSERT_MSG("libev: ev_io_start called on watcher with invalid fd", fd_valid(fd));
 #endif
   EV_FREQUENT_CHECK;
 
   ev_start(EV_A_(W) w, 1);
+  ++activeio;
   array_needsize(ANFD, anfds, anfdmax, fd + 1, array_needsize_zerofill);
   wlist_add(&anfds[fd].head, (WL)w);
 
   /* common bug, apparently */
-  assert(("libev: ev_io_start called with corrupted watcher", ((WL)w)->next != (WL)w));
+  EV_ASSERT_MSG("libev: ev_io_start called with corrupted watcher", ((WL)w)->next != (WL)w);
 
-  fd_change(EV_A_ fd, w->events & EV__IOFDSET | EV_ANFD_REIFY);
+  fd_change(EV_A_ fd, (w->events & EV__IOFDSET) | EV_ANFD_REIFY);
   w->events &= ~EV__IOFDSET;
 
   EV_FREQUENT_CHECK;
@@ -4259,14 +4312,16 @@ ecb_noinline void ev_io_stop(EV_P_ ev_io* w) EV_NOEXCEPT {
   if (ecb_expect_false(!ev_is_active(w)))
     return;
 
-  assert(("libev: ev_io_stop called with illegal fd (must stay constant after start!)", w->fd >= 0 && w->fd < anfdmax));
+  EV_ASSERT_MSG("libev: ev_io_stop called with illegal fd (must stay constant after start!)",
+                w->fd >= 0 && w->fd < anfdmax);
 
 #if EV_VERIFY >= 2
-  assert(("libev: ev_io_stop called on watcher with invalid fd", fd_valid(w->fd)));
+  EV_ASSERT_MSG("libev: ev_io_stop called on watcher with invalid fd", fd_valid(w->fd));
 #endif
   EV_FREQUENT_CHECK;
 
   wlist_del(&anfds[w->fd].head, (WL)w);
+  --activeio;
   ev_stop(EV_A_(W) w);
 
   fd_change(EV_A_ w->fd, EV_ANFD_REIFY);
@@ -4280,7 +4335,7 @@ ecb_noinline void ev_timer_start(EV_P_ ev_timer* w) EV_NOEXCEPT {
 
   ev_at(w) += mn_now;
 
-  assert(("libev: ev_timer_start called with negative timer repeat value", w->repeat >= 0.));
+  EV_ASSERT_MSG("libev: ev_timer_start called with negative timer repeat value", w->repeat >= 0.);
 
   EV_FREQUENT_CHECK;
 
@@ -4306,7 +4361,7 @@ ecb_noinline void ev_timer_stop(EV_P_ ev_timer* w) EV_NOEXCEPT {
   {
     int active = ev_active(w);
 
-    assert(("libev: internal timer heap corruption", ANHE_w(timers[active]) == (WT)w));
+    EV_ASSERT_MSG("libev: internal timer heap corruption", ANHE_w(timers[active]) == (WT)w);
 
     --timercnt;
 
@@ -4362,7 +4417,7 @@ ecb_noinline void ev_periodic_start(EV_P_ ev_periodic* w) EV_NOEXCEPT {
   if (w->reschedule_cb)
     ev_at(w) = w->reschedule_cb(w, ev_rt_now);
   else if (w->interval) {
-    assert(("libev: ev_periodic_start called with negative interval value", w->interval >= 0.));
+    EV_ASSERT_MSG("libev: ev_periodic_start called with negative interval value", w->interval >= 0.);
     periodic_recalc(EV_A_ w);
   }
   else
@@ -4392,7 +4447,7 @@ ecb_noinline void ev_periodic_stop(EV_P_ ev_periodic* w) EV_NOEXCEPT {
   {
     int active = ev_active(w);
 
-    assert(("libev: internal periodic heap corruption", ANHE_w(periodics[active]) == (WT)w));
+    EV_ASSERT_MSG("libev: internal periodic heap corruption", ANHE_w(periodics[active]) == (WT)w);
 
     --periodiccnt;
 
@@ -4424,11 +4479,11 @@ ecb_noinline void ev_signal_start(EV_P_ ev_signal* w) EV_NOEXCEPT {
   if (ecb_expect_false(ev_is_active(w)))
     return;
 
-  assert(("libev: ev_signal_start called with illegal signal number", w->signum > 0 && w->signum < EV_NSIG));
+  EV_ASSERT_MSG("libev: ev_signal_start called with illegal signal number", w->signum > 0 && w->signum < EV_NSIG);
 
 #if EV_MULTIPLICITY
-  assert(("libev: a signal must not be attached to two different loops",
-          !signals[w->signum - 1].loop || signals[w->signum - 1].loop == loop));
+  EV_ASSERT_MSG("libev: a signal must not be attached to two different loops",
+                !signals[w->signum - 1].loop || signals[w->signum - 1].loop == loop);
 
   signals[w->signum - 1].loop = EV_A;
   ECB_MEMORY_FENCE_RELEASE;
@@ -4535,7 +4590,7 @@ ecb_noinline void ev_signal_stop(EV_P_ ev_signal* w) EV_NOEXCEPT {
 
 void ev_child_start(EV_P_ ev_child* w) EV_NOEXCEPT {
 #if EV_MULTIPLICITY
-  assert(("libev: child watchers are only supported in the default loop", loop == ev_default_loop_ptr));
+  EV_ASSERT_MSG("libev: child watchers are only supported in the default loop", loop == ev_default_loop_ptr);
 #endif
   if (ecb_expect_false(ev_is_active(w)))
     return;
@@ -4693,6 +4748,9 @@ static void infy_cb(EV_P_ ev_io* w, int revents) {
   int ofs;
   int len = read(fs_fd, buf, sizeof(buf));
 
+  (void)w;
+  (void)revents;
+
   for (ofs = 0; ofs < len;) {
     struct inotify_event* ev = (struct inotify_event*)(buf + ofs);
     infy_wd(EV_A_ ev->wd, ev->wd, ev);
@@ -4789,6 +4847,8 @@ inline_size void infy_fork(EV_P) {
 #endif
 
 void ev_stat_stat(EV_P_ ev_stat* w) EV_NOEXCEPT {
+  (void)loop;
+
   if (lstat(w->path, &w->attr) < 0)
     w->attr.st_nlink = 0;
   else if (!w->attr.st_nlink)
@@ -4797,6 +4857,8 @@ void ev_stat_stat(EV_P_ ev_stat* w) EV_NOEXCEPT {
 
 ecb_noinline static void stat_timer_cb(EV_P_ ev_timer* w_, int revents) {
   ev_stat* w = (ev_stat*)(((char*)w_) - offsetof(ev_stat, timer));
+
+  (void)revents;
 
   ev_statdata prev = w->attr;
   ev_stat_stat(EV_A_ w);
@@ -4987,11 +5049,15 @@ void ev_check_stop(EV_P_ ev_check* w) EV_NOEXCEPT {
 
 #if EV_EMBED_ENABLE
 ecb_noinline void ev_embed_sweep(EV_P_ ev_embed* w) EV_NOEXCEPT {
+  (void)loop;
+
   ev_run(w->other, EVRUN_NOWAIT);
 }
 
 static void embed_io_cb(EV_P_ ev_io* io, int revents) {
   ev_embed* w = (ev_embed*)(((char*)io) - offsetof(ev_embed, io));
+
+  (void)revents;
 
   if (ev_cb(w))
     ev_feed_event(EV_A_(W) w, EV_EMBED);
@@ -5002,8 +5068,10 @@ static void embed_io_cb(EV_P_ ev_io* io, int revents) {
 static void embed_prepare_cb(EV_P_ ev_prepare* prepare, int revents) {
   ev_embed* w = (ev_embed*)(((char*)prepare) - offsetof(ev_embed, prepare));
 
+  (void)revents;
+
   {
-    EV_P = w->other;
+    loop = w->other;
 
     while (fdchangecnt) {
       fd_reify(EV_A);
@@ -5015,6 +5083,8 @@ static void embed_prepare_cb(EV_P_ ev_prepare* prepare, int revents) {
 #if EV_FORK_ENABLE
 static void embed_fork_cb(EV_P_ ev_fork* fork_w, int revents) {
   ev_embed* w = (ev_embed*)(((char*)fork_w) - offsetof(ev_embed, fork));
+
+  (void)revents;
 
   ev_embed_stop(EV_A_ w);
 
@@ -5043,7 +5113,7 @@ void ev_embed_start(EV_P_ ev_embed* w) EV_NOEXCEPT {
 
   {
     EV_P = w->other;
-    assert(("libev: loop to be embedded is not embeddable", backend & ev_embeddable_backends()));
+    EV_ASSERT_MSG("libev: loop to be embedded is not embeddable", backend & ev_embeddable_backends());
     ev_io_init(&w->io, embed_io_cb, backend_fd, EV_READ);
   }
 
@@ -5356,8 +5426,8 @@ ecb_cold void ev_walk(EV_P_ int types, void (*cb)(EV_P_ int type, void* w)) EV_N
         wl = wn;
       }
 #endif
-  /* EV_STAT     0x00001000 /* stat data changed */
-  /* EV_EMBED    0x00010000 /* embedded event loop needs sweep */
+  /* EV_STAT     0x00001000 -- stat data changed */
+  /* EV_EMBED    0x00010000 -- embedded event loop needs sweep */
 }
 #endif
 
