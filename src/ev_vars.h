@@ -98,7 +98,7 @@ VARx(ev_tstamp, now_floor)     /* last time we refreshed rt_time */
 #endif
 
 #if EV_USE_IOURING || EV_GENWRAP
-                            VARx(int, iouring_fd) VARx(unsigned, iouring_to_submit);
+                                VARx(int, iouring_fd) VARx(unsigned, iouring_to_submit);
 VARx(int, iouring_entries) VARx(int, iouring_max_entries) VARx(void*, iouring_sq_ring) VARx(void*, iouring_cq_ring)
     VARx(void*, iouring_sqes) VARx(uint32_t, iouring_sq_ring_size) VARx(uint32_t, iouring_cq_ring_size)
         VARx(uint32_t, iouring_sqes_size) VARx(uint32_t, iouring_sq_head) VARx(uint32_t, iouring_sq_tail)
