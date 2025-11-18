@@ -4514,11 +4514,13 @@ ecb_noinline void ev_signal_start(EV_P_ ev_signal* w) EV_NOEXCEPT {
   ev_start(EV_A_(W) w, 1);
   wlist_add(&signals[w->signum - 1].head, (WL)w);
 
-  if (!((WL)w)->next)
+  if (!((WL)w)->next) {
+    int need_signal_handler = 1;
 #if EV_USE_SIGNALFD
-    if (sigfd < 0) /*TODO*/
+    need_signal_handler = sigfd < 0;
 #endif
-    {
+
+    if (need_signal_handler) {
 #ifdef _WIN32
       evpipe_init(EV_A);
 
@@ -4540,6 +4542,7 @@ ecb_noinline void ev_signal_start(EV_P_ ev_signal* w) EV_NOEXCEPT {
     }
 #endif
     }
+  }
 
   EV_FREQUENT_CHECK;
 }
