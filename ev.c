@@ -580,10 +580,11 @@ struct signalfd_siginfo {
 #define MIN_INTERVAL 0.0001220703125 /* 1/2**13, good till 4000 */
 /*#define MIN_INTERVAL  0.00000095367431640625 /* 1/2**20, good till 2200 */
 
-#define MIN_TIMEJUMP 1.           /* minimum timejump that gets detected (if monotonic clock available) */
-#define MAX_BLOCKTIME 59.743      /* never wait longer than this time (to detect time jumps) */
-#define MAX_BLOCKTIME2 1500001.07 /* same, but when timerfd is used to detect jumps, also safe delay to not overflow \
-                                   */
+#define MIN_TIMEJUMP 1.      /* minimum timejump that gets detected (if monotonic clock available) */
+#define MAX_BLOCKTIME 59.743 /* never wait longer than this time (to detect time jumps) */
+#define MAX_BLOCKTIME2                                                                          \
+  1500001.07 /* same, but when timerfd is used to detect jumps, also safe delay to not overflow \
+              */
 
 /* find a portable timestamp that is "always" in the future but fits into time_t.
  * this is quite hard, and we are mostly guessing - we handle 32 bit signed/unsigned time_t,
