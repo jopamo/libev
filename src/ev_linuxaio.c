@@ -234,7 +234,7 @@ static void linuxaio_modify(EV_P_ int fd, int oev, int nev) {
 
       /* the EINPROGRESS test is for nicer error message. clumsy */
       if (errno != EINTR) {
-        assert(("libev: linuxaio unexpected io_cancel failed", errno != EINTR && errno != EINPROGRESS));
+        EV_ASSERT_MSG("libev: linuxaio unexpected io_cancel failed", errno != EINTR && errno != EINPROGRESS);
         break;
       }
     }
@@ -275,7 +275,7 @@ static void linuxaio_parse_events(EV_P_ struct io_event* ev, int nr) {
     const uint32_t gen = (uint32_t)(ev->data >> 32);
     const int res = ev->res;
 
-    assert(("libev: iocb fd must be in-bounds", fd >= 0 && fd < anfdmax));
+    EV_ASSERT_MSG("libev: iocb fd must be in-bounds", fd >= 0 && fd < anfdmax);
 
     /* only accept events if generation counter matches */
     if (ecb_expect_true(gen == (uint32_t)anfds[fd].egen)) {
@@ -464,7 +464,7 @@ static void linuxaio_poll(EV_P_ ev_tstamp timeout) {
         return;
       }
       else if (errno == EBADF) {
-        assert(("libev: event loop rejected bad fd", errno != EBADF));
+        EV_ASSERT_MSG("libev: event loop rejected bad fd", errno != EBADF);
         fd_kill(EV_A_ linuxaio_submits[submitted]->aio_fildes);
 
         res = 1; /* skip this iocb */
