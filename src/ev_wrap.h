@@ -3,6 +3,7 @@
 #define EV_WRAP_H
 #define acquire_cb ((loop)->acquire_cb)
 #define activecnt ((loop)->activecnt)
+#define activeio ((loop)->activeio)
 #define anfdmax ((loop)->anfdmax)
 #define anfds ((loop)->anfds)
 #define async_pending ((loop)->async_pending)
@@ -138,6 +139,7 @@
 #undef EV_WRAP_H
 #undef acquire_cb
 #undef activecnt
+#undef activeio
 #undef anfdmax
 #undef anfds
 #undef async_pending
