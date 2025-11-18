@@ -488,6 +488,10 @@ void set(int fd, int events) EV_NOEXCEPT {
   ev_io_set(static_cast<ev_io*>(this), fd, events);
 }
 
+int fd() const EV_NOEXCEPT {
+  return ev_io_fd(static_cast<const ev_io*>(this));
+}
+
 void set(int events) EV_NOEXCEPT {
   freeze_guard freeze(this);
   ev_io_modify(static_cast<ev_io*>(this), events);

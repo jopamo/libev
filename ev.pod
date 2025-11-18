@@ -1848,16 +1848,23 @@ might be faster with some backends, as libev can assume that the C<fd>
 still refers to the same underlying file description, something it cannot
 do when using C<ev_io_set>.
 
+=item int ev_io_fd (const ev_io *)
+
+Returns the file descriptor being watched. This accessor should be
+preferred over directly reading the struct member, as libev stores
+internal state in the watcher while it is inactive.
+
 =item int fd [no-modify]
 
 The file descriptor being watched. While it can be read at any time, you
 must not modify this member even when the watcher is stopped - always use
-C<ev_io_set> for that.
+C<ev_io_set> for that. To obtain the descriptor value without exposing
+libev’s internal bits, use C<ev_io_fd>.
 
 =item int events [no-modify]
 
-The set of events the fd is being watched for, among other flags. Remember
-that this is a bit set - to test for C<EV_READ>, use C<< w->events &
+The set of events the fd is being watched for. Remember that this is a
+bit set - to test for C<EV_READ>, use C<< w->events &
 EV_READ >>, and similarly for C<EV_WRITE>.
 
 As with C<fd>, you must not modify this member even when the watcher is
@@ -5738,4 +5745,3 @@ to be started (attached to an event loop) before they can receive events.
 
 Marc Lehmann <libev@schmorp.de>, with repeated corrections by Mikael
 Magnusson and Emanuele Giaquinta, and minor corrections by many others.
-

@@ -1971,14 +1971,20 @@ Similar to \f(CW\*(C`ev_io_set\*(C'\fR, but only changes the requested events. U
 might be faster with some backends, as libev can assume that the \f(CW\*(C`fd\*(C'\fR
 still refers to the same underlying file description, something it cannot
 do when using \f(CW\*(C`ev_io_set\*(C'\fR.
+.IP "int ev_io_fd (const ev_io *)" 4
+.IX Item "int ev_io_fd (const ev_io *)"
+Returns the file descriptor being watched. Prefer this accessor over
+reading the struct member directly, as libev uses that field to store
+internal state while the watcher is inactive.
 .IP "int fd [no\-modify]" 4
 .IX Item "int fd [no-modify]"
 The file descriptor being watched. While it can be read at any time, you
 must not modify this member even when the watcher is stopped \- always use
-\&\f(CW\*(C`ev_io_set\*(C'\fR for that.
+\&\f(CW\*(C`ev_io_set\*(C'\fR for that. To retrieve the descriptor value safely, call
+\&\f(CW\*(C`ev_io_fd\*(C'\fR.
 .IP "int events [no\-modify]" 4
 .IX Item "int events [no-modify]"
-The set of events the fd is being watched for, among other flags. Remember
+The set of events the fd is being watched for. Remember
 that this is a bit set \- to test for \f(CW\*(C`EV_READ\*(C'\fR, use \f(CW\*(C`w\->events &
 EV_READ\*(C'\fR, and similarly for \f(CW\*(C`EV_WRITE\*(C'\fR.
 .Sp

@@ -2236,9 +2236,9 @@ inline_speed void* ev_realloc(void* ptr, long size) {
 typedef struct {
   WL head;
   unsigned char events; /* the events watched for */
-  unsigned char reify;  /* flag set when this ANFD needs reification (EV_ANFD_REIFY, EV__IOFDSET) */
   unsigned char emask;  /* some backends store the actual kernel mask in here */
   unsigned char eflags; /* flags field for use by backends */
+  unsigned int reify;   /* flag set when this ANFD needs reification (EV_ANFD_REIFY, EV__IOFDSET) */
 #if EV_USE_EPOLL
   unsigned int egen; /* generation counter to counter epoll bugs */
 #endif
@@ -2552,7 +2552,7 @@ inline_size void fd_reify(EV_P) {
     ev_io* w;
 
     unsigned char o_events = anfd->events;
-    unsigned char o_reify = anfd->reify;
+    unsigned int o_reify = anfd->reify;
 
     anfd->reify = 0;
 
@@ -2583,7 +2583,7 @@ inline_size void fd_reify(EV_P) {
 
 /* something about the given fd changed */
 inline_size void fd_change(EV_P_ int fd, int flags) {
-  unsigned char reify = anfds[fd].reify;
+  unsigned int reify = anfds[fd].reify;
   anfds[fd].reify = reify | flags;
 
   if (ecb_expect_true(!reify)) {
@@ -4227,18 +4227,22 @@ inline_size void ev_stop(EV_P_ W w) {
 /*****************************************************************************/
 
 ecb_noinline void ev_io_start(EV_P_ ev_io* w) EV_NOEXCEPT {
-  int fd = w->fd;
-
   if (ecb_expect_false(ev_is_active(w)))
     return;
 
+  assert(("libev: ev_io_start called with illegal event mask", !(w->events & ~(EV_READ | EV_WRITE))));
+
+  int needs_fdset = w->fd & EV__IOFDSET;
+  int fd = ev_io_fd(w);
+
   assert(("libev: ev_io_start called with negative fd", fd >= 0));
-  assert(("libev: ev_io_start called with illegal event mask", !(w->events & ~(EV__IOFDSET | EV_READ | EV_WRITE))));
 
 #if EV_VERIFY >= 2
   assert(("libev: ev_io_start called on watcher with invalid fd", fd_valid(fd)));
 #endif
   EV_FREQUENT_CHECK;
+
+  w->fd = fd;
 
   ev_start(EV_A_(W) w, 1);
   array_needsize(ANFD, anfds, anfdmax, fd + 1, array_needsize_zerofill);
@@ -4247,8 +4251,7 @@ ecb_noinline void ev_io_start(EV_P_ ev_io* w) EV_NOEXCEPT {
   /* common bug, apparently */
   assert(("libev: ev_io_start called with corrupted watcher", ((WL)w)->next != (WL)w));
 
-  fd_change(EV_A_ fd, w->events & EV__IOFDSET | EV_ANFD_REIFY);
-  w->events &= ~EV__IOFDSET;
+  fd_change(EV_A_ fd, needs_fdset | EV_ANFD_REIFY);
 
   EV_FREQUENT_CHECK;
 }
