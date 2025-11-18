@@ -6,6 +6,27 @@
 #include <stdlib.h>
 #include <time.h>
 
+static inline int bench_read_runs(void) {
+  const char* env = getenv("LIBEV_BENCH_RUNS");
+
+  if (!env || env[0] == '\0') {
+    return 5;
+  }
+
+  char* endptr = NULL;
+  long parsed = strtol(env, &endptr, 10);
+
+  if (endptr == env || parsed <= 0) {
+    return 5;
+  }
+
+  if (parsed > INT_MAX) {
+    parsed = INT_MAX;
+  }
+
+  return (int)parsed;
+}
+
 static inline int bench_read_iterations(void) {
   const char* env = getenv("LIBEV_BENCH_ITERATIONS");
 
@@ -43,22 +64,24 @@ static inline int bench_clock_now(struct timespec* ts) {
 static inline void bench_print_result(
   const char* scenario,
   int iterations,
-  double seconds,
+  double avg_seconds,
   int version_major,
-  int version_minor) {
-  if (seconds <= 0.0) {
-    seconds = 1e-9;
+  int version_minor,
+  int runs) {
+  if (avg_seconds <= 0.0) {
+    avg_seconds = 1e-9;
   }
 
-  const double per_second = (double)iterations / seconds;
+  const double per_second = (double)iterations / avg_seconds;
 
   printf(
-    "scenario=%s version=%d.%d iterations=%d seconds=%.6f per_second=%.0f\n",
+    "scenario=%s version=%d.%d iterations=%d runs=%d avg_seconds=%.6f per_second=%.0f\n",
     scenario ? scenario : "unknown",
     version_major,
     version_minor,
     iterations,
-    seconds,
+    runs,
+    avg_seconds,
     per_second);
 }
 
