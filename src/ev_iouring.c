@@ -79,7 +79,7 @@
  */
 
 /* takes advantage of single mmap and NODROP when available */
-/* TODO: resize cq/sq size independently */
+/* resizes cq/sq sizes independently when needed */
 #include <sys/mman.h>
 #include <poll.h>
 #include <stdint.h>
@@ -326,6 +326,7 @@ ecb_cold static void iouring_internal_destroy(EV_P) {
 ecb_cold static int iouring_internal_init(EV_P) {
   struct io_uring_params params;
   unsigned entries;
+  unsigned cq_entries;
 
   iouring_to_submit = 0;
 
@@ -344,19 +345,21 @@ ecb_cold static int iouring_internal_init(EV_P) {
     return -1;
 
   entries = iouring_entries;
+  cq_entries = iouring_cq_entries ? iouring_cq_entries : entries * 2;
 
   for (;;) {
     memset(&params, 0, sizeof(params));
 
     /* request a larger CQ than SQ using independent sizing */
     params.flags = IORING_SETUP_CQSIZE;
-    params.cq_entries = entries * 2;
+    params.cq_entries = cq_entries;
 
     iouring_fd = evsys_io_uring_setup(entries, &params);
 
     if (iouring_fd >= 0) {
       /* kernel may clamp sq_entries, remember the real value */
       iouring_entries = params.sq_entries;
+      iouring_cq_entries = params.cq_entries;
       break; /* yippie */
     }
 
@@ -368,13 +371,22 @@ ecb_cold static int iouring_internal_init(EV_P) {
      */
 
     /* we hit the limit already, give up */
-    if (iouring_max_entries)
+    if (iouring_max_entries) {
+      /* try to shrink cq before giving up entirely */
+      if (cq_entries > entries) {
+        cq_entries >>= 1;
+        iouring_cq_entries = cq_entries;
+        continue;
+      }
       return -1;
+    }
 
     /* first time we hit EINVAL? assume we hit the limit, so go back and retry */
     entries >>= 1;
+    cq_entries >>= 1;
     iouring_entries = entries;
     iouring_max_entries = entries;
+    iouring_cq_entries = cq_entries;
   }
 
   iouring_features = params.features;
@@ -611,9 +623,9 @@ ecb_cold static void iouring_overflow(EV_P) {
     return;
   }
 
-  /* we double the size until we hit the hard-to-probe maximum */
+  /* try increasing the CQ size independently first */
   if (!iouring_max_entries) {
-    iouring_entries <<= 1;
+    iouring_cq_entries = iouring_cq_entries ? iouring_cq_entries << 1 : (unsigned)iouring_entries << 1;
     iouring_fork(EV_A);
   }
   else {
@@ -699,6 +711,7 @@ static void iouring_poll(EV_P_ ev_tstamp timeout) {
 inline_size int iouring_init(EV_P_ int flags) {
   iouring_entries = IOURING_INIT_ENTRIES;
   iouring_max_entries = 0;
+  iouring_cq_entries = 0;
 
   (void)flags;
 

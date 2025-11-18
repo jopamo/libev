@@ -54,6 +54,7 @@
 #define iouring_cq_ring_size ((loop)->iouring_cq_ring_size)
 #define iouring_cq_tail ((loop)->iouring_cq_tail)
 #define iouring_entries ((loop)->iouring_entries)
+#define iouring_cq_entries ((loop)->iouring_cq_entries)
 #define iouring_fd ((loop)->iouring_fd)
 #define iouring_max_entries ((loop)->iouring_max_entries)
 #define iouring_sq_array ((loop)->iouring_sq_array)
@@ -195,6 +196,7 @@
 #undef iouring_cq_ring_size
 #undef iouring_cq_tail
 #undef iouring_entries
+#undef iouring_cq_entries
 #undef iouring_fd
 #undef iouring_max_entries
 #undef iouring_sq_array

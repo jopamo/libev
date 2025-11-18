@@ -99,16 +99,17 @@ VARx(ev_tstamp, now_floor)     /* last time we refreshed rt_time */
 
 #if EV_USE_IOURING || EV_GENWRAP
                                 VARx(int, iouring_fd) VARx(unsigned, iouring_to_submit);
-VARx(int, iouring_entries) VARx(int, iouring_max_entries) VARx(void*, iouring_sq_ring) VARx(void*, iouring_cq_ring)
-    VARx(void*, iouring_sqes) VARx(uint32_t, iouring_sq_ring_size) VARx(uint32_t, iouring_cq_ring_size)
-        VARx(uint32_t, iouring_sqes_size) VARx(uint32_t, iouring_sq_head) VARx(uint32_t, iouring_sq_tail)
-            VARx(uint32_t, iouring_sq_ring_mask) VARx(uint32_t, iouring_sq_ring_entries)
-                VARx(uint32_t, iouring_sq_flags) VARx(uint32_t, iouring_sq_dropped) VARx(uint32_t, iouring_sq_array)
-                    VARx(uint32_t, iouring_cq_head) VARx(uint32_t, iouring_cq_tail) VARx(uint32_t, iouring_cq_ring_mask)
-                        VARx(uint32_t, iouring_cq_ring_entries) VARx(uint32_t, iouring_cq_overflow)
-                            VARx(uint32_t, iouring_cq_cqes) VARx(ev_tstamp, iouring_to) VARx(uint64_t, iouring_to_user)
-                                VARx(uint64_t, iouring_to_cancel_user) VARx(uint64_t, iouring_to_remove_user)
-                                    VARx(uint64_t, iouring_to_seq) VAR(iouring_to_ts, int64_t iouring_to_ts[2])
+VARx(int, iouring_entries) VARx(int, iouring_max_entries) VARx(unsigned, iouring_cq_entries) VARx(void*, iouring_sq_ring)
+    VARx(void*, iouring_cq_ring) VARx(void*, iouring_sqes) VARx(uint32_t, iouring_sq_ring_size)
+        VARx(uint32_t, iouring_cq_ring_size) VARx(uint32_t, iouring_sqes_size) VARx(uint32_t, iouring_sq_head)
+            VARx(uint32_t, iouring_sq_tail) VARx(uint32_t, iouring_sq_ring_mask)
+                VARx(uint32_t, iouring_sq_ring_entries) VARx(uint32_t, iouring_sq_flags) VARx(uint32_t, iouring_sq_dropped)
+                    VARx(uint32_t, iouring_sq_array) VARx(uint32_t, iouring_cq_head) VARx(uint32_t, iouring_cq_tail)
+                        VARx(uint32_t, iouring_cq_ring_mask) VARx(uint32_t, iouring_cq_ring_entries)
+                            VARx(uint32_t, iouring_cq_overflow) VARx(uint32_t, iouring_cq_cqes) VARx(ev_tstamp, iouring_to)
+                                VARx(uint64_t, iouring_to_user) VARx(uint64_t, iouring_to_cancel_user)
+                                    VARx(uint64_t, iouring_to_remove_user) VARx(uint64_t, iouring_to_seq)
+                                        VAR(iouring_to_ts, int64_t iouring_to_ts[2])
 #endif
 
 #if EV_USE_KQUEUE || EV_GENWRAP
