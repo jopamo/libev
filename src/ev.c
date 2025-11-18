@@ -4502,11 +4502,12 @@ ecb_noinline void ev_signal_start(EV_P_ ev_signal* w) EV_NOEXCEPT {
   }
 
   if (sigfd >= 0) {
-    /* TODO: check .head */
-    sigaddset(&sigfd_set, w->signum);
-    sigprocmask(SIG_BLOCK, &sigfd_set, 0);
+    if (!signals[w->signum - 1].head) {
+      sigaddset(&sigfd_set, w->signum);
+      sigprocmask(SIG_BLOCK, &sigfd_set, 0);
 
-    signalfd(sigfd, &sigfd_set, 0);
+      signalfd(sigfd, &sigfd_set, 0);
+    }
   }
 #endif
 
