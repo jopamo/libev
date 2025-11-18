@@ -5352,7 +5352,7 @@ ecb_cold void ev_walk(EV_P_ int types, void (*cb)(EV_P_ int type, void* w)) EV_N
   if (types & (EV_TIMER | EV_STAT))
     for (i = timercnt + HEAP0; i-- > HEAP0;)
 #if EV_STAT_ENABLE
-      /*TODO: timer is not always active*/
+      /* timer may be inactive when the stat watcher relies on inotify */
       if (ev_cb((ev_timer*)ANHE_w(timers[i])) == stat_timer_cb) {
         if (types & EV_STAT)
           cb(EV_A_ EV_STAT, ((char*)ANHE_w(timers[i])) - offsetof(struct ev_stat, timer));
@@ -5361,6 +5361,17 @@ ecb_cold void ev_walk(EV_P_ int types, void (*cb)(EV_P_ int type, void* w)) EV_N
 #endif
           if (types & EV_TIMER)
         cb(EV_A_ EV_TIMER, ANHE_w(timers[i]));
+
+#if EV_STAT_ENABLE && EV_USE_INOTIFY
+  if (types & EV_STAT)
+    for (i = 0; i < (EV_INOTIFY_HASHSIZE); ++i)
+      for (wl = fs_hash[i].head; wl; wl = wl->next) {
+        ev_stat* w = (ev_stat*)wl;
+
+        if (!ev_is_active(&w->timer))
+          cb(EV_A_ EV_STAT, w);
+      }
+#endif
 
 #if EV_PERIODIC_ENABLE
   if (types & EV_PERIODIC)
