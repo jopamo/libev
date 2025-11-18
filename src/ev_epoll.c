@@ -127,8 +127,8 @@ static void epoll_modify(EV_P_ int fd, int oev, int nev) {
     return;
   }
   else
-    assert(
-        ("libev: I/O watcher with invalid fd found in epoll_ctl", errno != EBADF && errno != ELOOP && errno != EINVAL));
+    EV_ASSERT_MSG("libev: I/O watcher with invalid fd found in epoll_ctl",
+                  errno != EBADF && errno != ELOOP && errno != EINVAL);
 
   fd_kill(EV_A_ fd);
 
@@ -244,6 +244,8 @@ static int epoll_epoll_create(void) {
 }
 
 inline_size int epoll_init(EV_P_ int flags) {
+  (void)flags;
+
   if ((backend_fd = epoll_epoll_create()) < 0)
     return 0;
 
