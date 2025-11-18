@@ -7,6 +7,7 @@ bench_specs = [
   {'name': 'timer', 'source': 'perf_timer_bench.c', 'label': 'timer'},
   {'name': 'prepare-check', 'source': 'perf_prepare_check_bench.c', 'label': 'prepare-check'},
 ]
+backend_perf_args = []
 
 python3 = import('python').find_installation('python3')
 nm_prog = find_program('nm', required: true)
@@ -49,7 +50,28 @@ foreach bench : bench_specs
     env: bench_env,
     timeout: bench_timeout,
   )
+
+  backend_perf_args += [
+    '--bench',
+    bench['label'],
+    bench_local.full_path(),
+    bench_baseline.full_path(),
+  ]
 endforeach
+
+test(
+  'perf-compare-all-backends',
+  python3,
+  args: [
+    files('run_backend_perf.py'),
+    '--lib',
+    libev.full_path(),
+    '--perf-compare-script',
+    perf_compare_script,
+  ] + backend_perf_args,
+  env: bench_env,
+  timeout: bench_timeout,
+)
 
 test(
   'symbols-match-reference',
