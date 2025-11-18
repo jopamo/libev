@@ -91,7 +91,7 @@ void* event_init(void) {
   if (!ev_x_cur)
     ev_x_cur = (struct event_base*)ev_default_loop(EVFLAG_AUTO);
 #else
-  assert(("libev: multiple event bases not supported when not compiled with EV_MULTIPLICITY", !ev_x_cur));
+  EV_ASSERT_MSG("libev: multiple event bases not supported when not compiled with EV_MULTIPLICITY", !ev_x_cur);
 
   ev_x_cur = (struct event_base*)(long)ev_default_loop(EVFLAG_AUTO);
 #endif
@@ -161,6 +161,8 @@ static inline void ev_x_cb(struct event* ev, int revents) {
 static void ev_x_cb_sig(EV_P_ struct ev_signal* w, int revents) {
   struct event* ev = (struct event*)(((char*)w) - offsetof(struct event, iosig.sig));
 
+  (void)loop;
+
   if (revents & EV_ERROR)
     event_del(ev);
 
@@ -170,6 +172,8 @@ static void ev_x_cb_sig(EV_P_ struct ev_signal* w, int revents) {
 static void ev_x_cb_io(EV_P_ struct ev_io* w, int revents) {
   struct event* ev = (struct event*)(((char*)w) - offsetof(struct event, iosig.io));
 
+  (void)loop;
+
   if ((revents & EV_ERROR) || !(ev->ev_events & EV_PERSIST))
     event_del(ev);
 
@@ -178,6 +182,8 @@ static void ev_x_cb_io(EV_P_ struct ev_io* w, int revents) {
 
 static void ev_x_cb_to(EV_P_ struct ev_timer* w, int revents) {
   struct event* ev = (struct event*)(((char*)w) - offsetof(struct event, to));
+
+  (void)loop;
 
   event_del(ev);
   ev_x_cb(ev, revents);
