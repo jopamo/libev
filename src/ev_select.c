@@ -80,7 +80,7 @@ static void select_modify(EV_P_ int fd, int oev, int nev) {
     int handle = fd;
 #endif
 
-    assert(("libev: fd >= FD_SETSIZE passed to fd_set-based select backend", fd < FD_SETSIZE));
+    EV_ASSERT_MSG("libev: fd >= FD_SETSIZE passed to fd_set-based select backend", fd < FD_SETSIZE);
 
 /* FD_SET is broken on windows (it adds the fd to a set twice or more,
  * which eventually leads to overflows). Need to call it only on changes.
@@ -266,6 +266,8 @@ inline_size int select_init(EV_P_ int flags) {
   backend_mintime = EV_TS_CONST(1e-6);
   backend_modify = select_modify;
   backend_poll = select_poll;
+
+  (void)flags;
 
 #if EV_SELECT_USE_FD_SET
   vec_ri = ev_malloc(sizeof(fd_set));
