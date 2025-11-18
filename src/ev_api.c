@@ -1027,7 +1027,21 @@ int ev_run(EV_P_ int flags) {
       ++loop_count;
 #endif
       assert((loop_done = EVBREAK_RECURSE, 1)); /* assert for side effect */
-      backend_poll(EV_A_ waittime);
+
+      if (ecb_expect_true(activeio
+#if EV_PERIODIC_ENABLE
+                          || periodiccnt
+#endif
+                          || timercnt))
+        backend_poll(EV_A_ waittime);
+      else {
+        /* No pending fd/timer watchers: fall back to a userspace sleep so we do
+         * not pay for a backend poll that would immediately return. */
+        EV_RELEASE_CB;
+        ev_sleep(waittime);
+        EV_ACQUIRE_CB;
+      }
+
       assert((loop_done = EVBREAK_CANCEL, 1)); /* assert for side effect */
 
       pipe_write_wanted = 0; /* just an optimisation, no fence needed */
