@@ -53,6 +53,7 @@ VARx(ev_tstamp, now_floor)     /* last time we refreshed rt_time */
     VARx(ev_tstamp, io_blocktime) VARx(ev_tstamp, timeout_blocktime)
 
         VARx(int, backend) VARx(int, activecnt) /* total number of active events ("refcount") */
+    VARx(int, activeio)                         /* number of active fd watchers */
     VARx(EV_ATOMIC_T, loop_done)                /* signal by ev_break */
 
     VARx(int, backend_fd) VARx(ev_tstamp, backend_mintime) /* assumed typical timer resolution */
