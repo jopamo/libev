@@ -92,8 +92,9 @@ VARx(ev_tstamp, now_floor)     /* last time we refreshed rt_time */
 
 #if EV_USE_LINUXAIO || EV_GENWRAP
                 VARx(aio_context_t, linuxaio_ctx) VARx(int, linuxaio_iteration) VARx(struct aniocb**, linuxaio_iocbps)
-                    VARx(int, linuxaio_iocbpmax) VARx(struct iocb**, linuxaio_submits) VARx(int, linuxaio_submitcnt)
-                        VARx(int, linuxaio_submitmax) VARx(ev_io, linuxaio_epoll_w)
+                    VARx(int, linuxaio_iocbpmax) VARx(struct aniocb*, linuxaio_iocbfreelist)
+                        VARx(struct linuxaio_iocb_block*, linuxaio_iocbblocks) VARx(struct iocb**, linuxaio_submits)
+                            VARx(int, linuxaio_submitcnt) VARx(int, linuxaio_submitmax) VARx(ev_io, linuxaio_epoll_w)
 #endif
 
 #if EV_USE_IOURING || EV_GENWRAP

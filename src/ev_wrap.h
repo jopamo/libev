@@ -78,6 +78,8 @@
 #define kqueue_events ((loop)->kqueue_events)
 #define kqueue_fd_pid ((loop)->kqueue_fd_pid)
 #define linuxaio_ctx ((loop)->linuxaio_ctx)
+#define linuxaio_iocbblocks ((loop)->linuxaio_iocbblocks)
+#define linuxaio_iocbfreelist ((loop)->linuxaio_iocbfreelist)
 #define linuxaio_epoll_w ((loop)->linuxaio_epoll_w)
 #define linuxaio_iocbpmax ((loop)->linuxaio_iocbpmax)
 #define linuxaio_iocbps ((loop)->linuxaio_iocbps)

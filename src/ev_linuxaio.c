@@ -181,35 +181,73 @@ ecb_cold static int linuxaio_nr_events(EV_P) {
 /* we use our own wrapper structure in case we ever want to do something "clever" */
 typedef struct aniocb {
   struct iocb io;
+  struct aniocb* next;
   /*int inuse;*/
 }* ANIOCBP;
 
-inline_size void linuxaio_array_needsize_iocbp(ANIOCBP* base, int offset, int count) {
+enum { LINUXAIO_IOCB_BLOCK = 32 };
+
+typedef struct linuxaio_iocb_block {
+  struct linuxaio_iocb_block* next;
+  struct aniocb iocbs[LINUXAIO_IOCB_BLOCK];
+} linuxaio_iocb_block;
+
+inline_size ANIOCBP linuxaio_iocb_get(EV_P) {
+  if (ecb_expect_false(!linuxaio_iocbfreelist)) {
+    linuxaio_iocb_block* block = (linuxaio_iocb_block*)ev_malloc(sizeof *block);
+    int i;
+
+    block->next = linuxaio_iocbblocks;
+    linuxaio_iocbblocks = block;
+
+    for (i = 0; i < LINUXAIO_IOCB_BLOCK; ++i) {
+      block->iocbs[i].next = linuxaio_iocbfreelist;
+      linuxaio_iocbfreelist = block->iocbs + i;
+    }
+  }
+
+  ANIOCBP iocb = linuxaio_iocbfreelist;
+  linuxaio_iocbfreelist = iocb->next;
+
+  /* full zero initialise is probably not required at the moment, but
+   * this is not well documented, so we better do it
+   */
+  memset(iocb, 0, sizeof *iocb);
+  iocb->io.aio_lio_opcode = IOCB_CMD_POLL;
+
+  return iocb;
+}
+
+inline_size void linuxaio_init_iocbps(EV_P_ int offset, int count) {
   while (count--) {
-    /* TODO: quite the overhead to allocate every iocb separately, maybe use our own allocator */
-    ANIOCBP iocb = (ANIOCBP)ev_malloc(sizeof *iocb);
+    ANIOCBP iocb = linuxaio_iocb_get(EV_A);
 
-    /* full zero initialise is probably not required at the moment, but
-     * this is not well documented, so we better do it
-     */
-    memset(iocb, 0, sizeof *iocb);
-
-    iocb->io.aio_lio_opcode = IOCB_CMD_POLL;
     iocb->io.aio_fildes = offset;
-
-    base[offset++] = iocb;
+    linuxaio_iocbps[offset++] = iocb;
   }
 }
 
 ecb_cold static void linuxaio_free_iocbp(EV_P) {
-  while (linuxaio_iocbpmax--)
-    ev_free(linuxaio_iocbps[linuxaio_iocbpmax]);
+  linuxaio_iocbpmax = 0;
+  linuxaio_iocbfreelist = 0;
 
-  linuxaio_iocbpmax = 0; /* next resize will completely reallocate the array, at some overhead */
+  while (linuxaio_iocbblocks) {
+    linuxaio_iocb_block* block = linuxaio_iocbblocks;
+    linuxaio_iocbblocks = block->next;
+    ev_free(block);
+  }
+
+  ev_free(linuxaio_iocbps);
+  linuxaio_iocbps = 0;
 }
 
 static void linuxaio_modify(EV_P_ int fd, int oev, int nev) {
-  array_needsize(ANIOCBP, linuxaio_iocbps, linuxaio_iocbpmax, fd + 1, linuxaio_array_needsize_iocbp);
+  if (ecb_expect_false(fd >= linuxaio_iocbpmax)) {
+    int oldmax = linuxaio_iocbpmax;
+
+    array_needsize(ANIOCBP, linuxaio_iocbps, linuxaio_iocbpmax, fd + 1, array_needsize_noinit);
+    linuxaio_init_iocbps(EV_A_ oldmax, linuxaio_iocbpmax - oldmax);
+  }
 
   ANIOCBP iocb = linuxaio_iocbps[fd];
   ANFD* anfd = &anfds[fd];
@@ -514,6 +552,8 @@ inline_size int linuxaio_init(EV_P_ int flags) {
 
   linuxaio_iocbpmax = 0;
   linuxaio_iocbps = 0;
+  linuxaio_iocbfreelist = 0;
+  linuxaio_iocbblocks = 0;
 
   linuxaio_submits = 0;
   linuxaio_submitmax = 0;
