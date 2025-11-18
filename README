@@ -1,6 +1,15 @@
 libev is a high-performance event loop/event model with lots of features.
 (see benchmark at http://libev.schmorp.de/bench.html)
 
+BUILDING WITH MESON
+
+   mkdir -p build
+   meson setup build
+   meson compile -C build
+   meson install -C build    # optional, requires privileges
+
+   Sources now live in src/ and public headers in include/.
+
 
 ABOUT
 
@@ -56,4 +65,3 @@ CONTRIBUTORS
    W.C.A. Wijngaards
    Christopher Layne
    Chris Brody
-
