@@ -59,7 +59,7 @@ inline_speed void port_associate_and_check(EV_P_ int fd, int ev) {
   if (0 >
       port_associate(backend_fd, PORT_SOURCE_FD, fd, (ev & EV_READ ? POLLIN : 0) | (ev & EV_WRITE ? POLLOUT : 0), 0)) {
     if (errno == EBADFD) {
-      assert(("libev: port_associate found invalid fd", errno != EBADFD));
+      EV_ASSERT_MSG("libev: port_associate found invalid fd", errno != EBADFD);
       fd_kill(EV_A_ fd);
     }
     else
@@ -124,7 +124,7 @@ inline_size int port_init(EV_P_ int flags) {
   if ((backend_fd = port_create()) < 0)
     return 0;
 
-  assert(("libev: PORT_SOURCE_FD must not be zero", PORT_SOURCE_FD));
+  EV_ASSERT_MSG("libev: PORT_SOURCE_FD must not be zero", PORT_SOURCE_FD);
 
   fcntl(backend_fd, F_SETFD, FD_CLOEXEC); /* not sure if necessary, hopefully doesn't hurt */
 
