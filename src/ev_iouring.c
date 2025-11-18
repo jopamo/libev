@@ -227,7 +227,7 @@ inline_speed int iouring_enter(EV_P_ ev_tstamp timeout) {
   res = evsys_io_uring_enter(iouring_fd, iouring_to_submit, 1, timeout > EV_TS_CONST(0.) ? IORING_ENTER_GETEVENTS : 0,
                              0, 0);
 
-  assert(("libev: io_uring_enter did not consume all sqes", (res < 0 || res == iouring_to_submit)));
+  EV_ASSERT_MSG("libev: io_uring_enter did not consume all sqes", (res < 0 || res == (int)iouring_to_submit));
 
   iouring_to_submit = 0;
 
@@ -271,13 +271,13 @@ static struct io_uring_sqe* iouring_sqe_get(EV_P) {
   return EV_SQES + (tail & EV_SQ_VAR(ring_mask));
 }
 
-inline_size struct io_uring_sqe* iouring_sqe_submit(EV_P_ struct io_uring_sqe* sqe) {
+inline_size void iouring_sqe_submit(EV_P_ struct io_uring_sqe* sqe) {
   unsigned idx = sqe - EV_SQES;
 
   EV_SQ_ARRAY[idx] = idx;
   ECB_MEMORY_FENCE_RELEASE;
   ++EV_SQ_VAR(tail);
-  /*ECB_MEMORY_FENCE_RELEASE; /* for the time being we assume this is not needed */
+  /* ECB_MEMORY_FENCE_RELEASE; for the time being we assume this is not needed */
   ++iouring_to_submit;
 }
 
@@ -288,11 +288,14 @@ inline_size struct io_uring_sqe* iouring_sqe_submit(EV_P_ struct io_uring_sqe* s
  * the next iteration should re-set it.
  */
 static void iouring_tfd_cb(EV_P_ struct ev_io* w, int revents) {
+  (void)w;
+  (void)revents;
+
   iouring_tfd_to = EV_TSTAMP_HUGE;
 }
 
 /* called for full and partial cleanup */
-ecb_cold static int iouring_internal_destroy(EV_P) {
+ecb_cold static void iouring_internal_destroy(EV_P) {
   close(iouring_tfd);
   close(iouring_fd);
 
@@ -397,7 +400,7 @@ ecb_cold static void iouring_fork(EV_P) {
   fd_rearm_all(EV_A);
 
   ev_io_stop(EV_A_ & iouring_tfd_w);
-  ev_io_set(EV_A_ & iouring_tfd_w, iouring_tfd, EV_READ);
+  ev_io_set(&iouring_tfd_w, iouring_tfd, EV_READ);
   ev_io_start(EV_A_ & iouring_tfd_w);
 }
 
@@ -448,7 +451,7 @@ inline_size void iouring_tfd_update(EV_P_ ev_tstamp timeout) {
     EV_TS_SET(its.it_value, tfd_to);
 
     if (timerfd_settime(iouring_tfd, TFD_TIMER_ABSTIME, &its, 0) < 0)
-      assert(("libev: iouring timerfd_settime failed", 0));
+      EV_ASSERT_MSG("libev: iouring timerfd_settime failed", 0);
   }
 }
 
@@ -461,7 +464,7 @@ inline_size void iouring_process_cqe(EV_P_ struct io_uring_cqe* cqe) {
   if (cqe->user_data == (uint64_t)-1)
     return;
 
-  assert(("libev: io_uring fd must be in-bounds", fd >= 0 && fd < anfdmax));
+  EV_ASSERT_MSG("libev: io_uring fd must be in-bounds", fd >= 0 && fd < anfdmax);
 
   /* documentation lies, of course. the result value is NOT like
    * normal syscalls, but like linux raw syscalls, i.e. negative
@@ -479,7 +482,7 @@ inline_size void iouring_process_cqe(EV_P_ struct io_uring_cqe* cqe) {
     /*TODO: EINVAL handling (was something failed with this fd)*/
 
     if (res == -EBADF) {
-      assert(("libev: event loop rejected bad fd", res != -EBADF));
+      EV_ASSERT_MSG("libev: event loop rejected bad fd", res != -EBADF);
       fd_kill(EV_A_ fd);
     }
     else {
@@ -604,6 +607,8 @@ static void iouring_poll(EV_P_ ev_tstamp timeout) {
 inline_size int iouring_init(EV_P_ int flags) {
   iouring_entries = IOURING_INIT_ENTRIES;
   iouring_max_entries = 0;
+
+  (void)flags;
 
   if (iouring_internal_init(EV_A) < 0) {
     iouring_internal_destroy(EV_A);
