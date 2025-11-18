@@ -51,24 +51,22 @@ foreach t : [
   test(t[0], exe, timeout: 30)
 endforeach
 
-if system_libev_dep.found()
-  bench_system = executable(
-    'perf_idle_system',
-    bench_source,
-    dependencies: system_libev_dep,
-    install: false,
-  )
+bench_baseline = executable(
+  'perf_idle_baseline',
+  bench_source,
+  dependencies: orig_libev_dep,
+  install: false,
+)
 
-  test(
-    'perf-compare-system',
-    python3,
-    args: [
-      files('perf_compare.py'),
-      bench_local.full_path(),
-      bench_system.full_path(),
-      '0.70',
-    ],
-    env: {'LIBEV_BENCH_ITERATIONS': bench_iterations_env},
-    timeout: bench_timeout,
-  )
-endif
+test(
+  'perf-compare-baseline',
+  python3,
+  args: [
+    files('perf_compare.py'),
+    bench_local.full_path(),
+    bench_baseline.full_path(),
+    '0.70',
+  ],
+  env: {'LIBEV_BENCH_ITERATIONS': bench_iterations_env},
+  timeout: bench_timeout,
+)

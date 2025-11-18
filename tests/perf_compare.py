@@ -6,7 +6,7 @@ from typing import Dict
 
 
 ITER_ENV = "LIBEV_BENCH_ITERATIONS"
-DEFAULT_TOLERANCE = 0.7  # local library must be at least this fraction of system performance
+DEFAULT_TOLERANCE = 0.7  # local library must be at least this fraction of baseline performance
 
 
 def parse_result_line(line: str) -> Dict[str, str]:
@@ -40,31 +40,31 @@ def run_benchmark(path: str, env: Dict[str, str]) -> Dict[str, str]:
 
 def main(argv: list[str]) -> int:
   if len(argv) < 3:
-    print(f"usage: {argv[0]} <local-bin> <system-bin> [tolerance]", file=sys.stderr)
+    print(f"usage: {argv[0]} <local-bin> <baseline-bin> [tolerance]", file=sys.stderr)
     return 2
 
   local_bin = argv[1]
-  system_bin = argv[2]
+  baseline_bin = argv[2]
   tolerance = float(argv[3]) if len(argv) > 3 else DEFAULT_TOLERANCE
 
   env = os.environ.copy()
   env.setdefault(ITER_ENV, "200000")
 
   local_result = run_benchmark(local_bin, env)
-  system_result = run_benchmark(system_bin, env)
+  baseline_result = run_benchmark(baseline_bin, env)
 
   local_rate = float(local_result["per_second"])
-  system_rate = float(system_result["per_second"])
-  ratio = local_rate / system_rate if system_rate > 0 else float("inf")
+  baseline_rate = float(baseline_result["per_second"])
+  ratio = local_rate / baseline_rate if baseline_rate > 0 else float("inf")
 
   print(f"local libev v{local_result.get('version', '?')}: {local_rate:.0f} iterations/sec")
-  print(f"system libev v{system_result.get('version', '?')}: {system_rate:.0f} iterations/sec")
-  print(f"ratio (local/system): {ratio:.2f}")
+  print(f"baseline libev v{baseline_result.get('version', '?')}: {baseline_rate:.0f} iterations/sec")
+  print(f"ratio (local/baseline): {ratio:.2f}")
 
   if ratio < tolerance:
     delta = (1.0 - ratio) * 100.0
     print(
-      f"local library is {delta:.1f}% slower than system (tolerance {tolerance:.2f})",
+      f"local library is {delta:.1f}% slower than baseline (tolerance {tolerance:.2f})",
       file=sys.stderr,
     )
     return 1
