@@ -78,10 +78,8 @@
  *    competition.
  */
 
-/* TODO: use internal TIMEOUT */
-/* TODO: take advantage of single mmap, NODROP etc. */
+/* takes advantage of single mmap and NODROP when available */
 /* TODO: resize cq/sq size independently */
-#include <sys/timerfd.h>
 #include <sys/mman.h>
 #include <poll.h>
 #include <stdint.h>
@@ -218,6 +216,9 @@ inline_size int evsys_io_uring_enter(int fd,
 #define EV_SQES ((struct io_uring_sqe*)iouring_sqes)
 #define EV_CQES ((struct io_uring_cqe*)((char*)iouring_cq_ring + iouring_cq_cqes))
 
+#define IORING_UD_TIMEOUT 0xffffffffU
+#define IORING_UD_TIMEOUT_REMOVE 0xfffffffeU
+
 /* feature flags and mapping mode */
 static unsigned int iouring_features;
 static int iouring_single_mmap;
@@ -287,20 +288,17 @@ inline_size void iouring_sqe_submit(EV_P_ struct io_uring_sqe* sqe) {
 
 /*****************************************************************************/
 
-/* when the timerfd expires we simply note the fact,
- * as the purpose of the timerfd is to wake us up, nothing else.
- * the next iteration should re-set it.
- */
-static void iouring_tfd_cb(EV_P_ struct ev_io* w, int revents) {
-  (void)w;
-  (void)revents;
+inline_size uint64_t iouring_user_data_next(EV_P_ uint32_t tag) {
+  uint64_t seq = ++iouring_to_seq;
 
-  iouring_tfd_to = EV_TSTAMP_HUGE;
+  if (!seq)
+    seq = ++iouring_to_seq;
+
+  return (seq << 32) | tag;
 }
 
 /* called for full and partial cleanup */
 ecb_cold static void iouring_internal_destroy(EV_P) {
-  close(iouring_tfd);
   close(iouring_fd);
 
   if (iouring_sq_ring != MAP_FAILED) {
@@ -315,10 +313,11 @@ ecb_cold static void iouring_internal_destroy(EV_P) {
   if (iouring_sqes != MAP_FAILED)
     munmap(iouring_sqes, iouring_sqes_size);
 
-  if (ev_is_active(&iouring_tfd_w)) {
-    ev_ref(EV_A);
-    ev_io_stop(EV_A_ & iouring_tfd_w);
-  }
+  iouring_to = EV_TSTAMP_HUGE;
+  iouring_to_user = 0;
+  iouring_to_cancel_user = 0;
+  iouring_to_remove_user = 0;
+  iouring_to_seq = 0;
 
   iouring_single_mmap = 0;
   iouring_features = 0;
@@ -330,12 +329,16 @@ ecb_cold static int iouring_internal_init(EV_P) {
 
   iouring_to_submit = 0;
 
-  iouring_tfd = -1;
   iouring_sq_ring = MAP_FAILED;
   iouring_cq_ring = MAP_FAILED;
   iouring_sqes = MAP_FAILED;
   iouring_single_mmap = 0;
   iouring_features = 0;
+  iouring_to = EV_TSTAMP_HUGE;
+  iouring_to_user = 0;
+  iouring_to_cancel_user = 0;
+  iouring_to_remove_user = 0;
+  iouring_to_seq = 0;
 
   if (!have_monotonic) /* cannot really happen, but what if11 */
     return -1;
@@ -428,13 +431,6 @@ ecb_cold static int iouring_internal_init(EV_P) {
   iouring_cq_overflow = params.cq_off.overflow;
   iouring_cq_cqes = params.cq_off.cqes;
 
-  iouring_tfd = timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC);
-
-  if (iouring_tfd < 0)
-    return iouring_tfd;
-
-  iouring_tfd_to = EV_TSTAMP_HUGE;
-
   return 0;
 }
 
@@ -445,10 +441,6 @@ ecb_cold static void iouring_fork(EV_P) {
     ev_syserr("(libev) io_uring_setup");
 
   fd_rearm_all(EV_A);
-
-  ev_io_stop(EV_A_ & iouring_tfd_w);
-  ev_io_set(&iouring_tfd_w, iouring_tfd, EV_READ);
-  ev_io_start(EV_A_ & iouring_tfd_w);
 }
 
 /*****************************************************************************/
@@ -483,32 +475,76 @@ static void iouring_modify(EV_P_ int fd, int oev, int nev) {
   }
 }
 
-inline_size void iouring_tfd_update(EV_P_ ev_tstamp timeout) {
-  ev_tstamp tfd_to = mn_now + timeout;
+inline_size void iouring_timeout_update(EV_P_ ev_tstamp timeout) {
+  ev_tstamp to = mn_now + timeout;
 
-  /* we assume there will be many iterations per timer change, so
-   * we only re-set the timerfd when we have to because its expiry
-   * is too late.
-   */
-  if (ecb_expect_false(tfd_to < iouring_tfd_to)) {
-    struct itimerspec its;
+  if (ecb_expect_false(iouring_to_user && iouring_to <= to))
+    return;
 
-    iouring_tfd_to = tfd_to;
-    EV_TS_SET(its.it_interval, 0.);
-    EV_TS_SET(its.it_value, tfd_to);
+  if (iouring_to_user) {
+    struct io_uring_sqe* sqe = iouring_sqe_get(EV_A);
 
-    if (timerfd_settime(iouring_tfd, TFD_TIMER_ABSTIME, &its, 0) < 0)
-      EV_ASSERT_MSG("libev: iouring timerfd_settime failed", 0);
+    iouring_to_cancel_user = iouring_to_user;
+    iouring_to_remove_user = iouring_user_data_next(EV_A_ IORING_UD_TIMEOUT_REMOVE);
+
+    sqe->opcode = IORING_OP_TIMEOUT_REMOVE;
+    sqe->addr = iouring_to_cancel_user;
+    sqe->user_data = iouring_to_remove_user;
+    sqe->timeout_flags = 0;
+    iouring_sqe_submit(EV_A_ sqe);
+  }
+
+  {
+    struct io_uring_sqe* sqe = iouring_sqe_get(EV_A);
+    struct iouring_kernel_timespec* ts = (struct iouring_kernel_timespec*)iouring_to_ts;
+
+    iouring_to = to;
+    iouring_to_user = iouring_user_data_next(EV_A_ IORING_UD_TIMEOUT);
+
+    EV_TS_SET(*ts, to);
+    sqe->opcode = IORING_OP_TIMEOUT;
+    sqe->addr = (uint64_t)ts;
+    sqe->len = 0;
+    sqe->timeout_flags = IORING_TIMEOUT_ABS;
+    sqe->user_data = iouring_to_user;
+    iouring_sqe_submit(EV_A_ sqe);
   }
 }
 
 inline_size void iouring_process_cqe(EV_P_ struct io_uring_cqe* cqe) {
-  int fd = cqe->user_data & 0xffffffffU;
-  uint32_t gen = cqe->user_data >> 32;
+  uint64_t user_data = cqe->user_data;
+  uint32_t tag = (uint32_t)user_data;
+  int fd = user_data & 0xffffffffU;
+  uint32_t gen = user_data >> 32;
   int res = cqe->res;
 
+  if (tag == IORING_UD_TIMEOUT) {
+    if (user_data == iouring_to_user) {
+      iouring_to_user = 0;
+      iouring_to = EV_TSTAMP_HUGE;
+    }
+    else if (user_data == iouring_to_cancel_user)
+      iouring_to_cancel_user = 0;
+
+    return;
+  }
+
+  if (tag == IORING_UD_TIMEOUT_REMOVE) {
+    if (user_data == iouring_to_remove_user) {
+      iouring_to_remove_user = 0;
+      iouring_to_cancel_user = 0;
+    }
+
+    return;
+  }
+
+  if (user_data == iouring_to_cancel_user) {
+    iouring_to_cancel_user = 0;
+    return;
+  }
+
   /* user_data -1 is a remove that we are not atm. interested in */
-  if (cqe->user_data == (uint64_t)-1)
+  if (user_data == (uint64_t)-1)
     return;
 
   EV_ASSERT_MSG("libev: io_uring fd must be in-bounds", fd >= 0 && fd < anfdmax);
@@ -642,7 +678,7 @@ static void iouring_poll(EV_P_ ev_tstamp timeout) {
     timeout = EV_TS_CONST(0.);
   else
     /* no events, so maybe wait for some */
-    iouring_tfd_update(EV_A_ timeout);
+    iouring_timeout_update(EV_A_ timeout);
 
   /* only enter the kernel if we have something to submit, or we need to wait */
   if (timeout || iouring_to_submit) {
@@ -670,11 +706,6 @@ inline_size int iouring_init(EV_P_ int flags) {
     iouring_internal_destroy(EV_A);
     return 0;
   }
-
-  ev_io_init(&iouring_tfd_w, iouring_tfd_cb, iouring_tfd, EV_READ);
-  ev_set_priority(&iouring_tfd_w, EV_MINPRI);
-  ev_io_start(EV_A_ & iouring_tfd_w);
-  ev_unref(EV_A); /* watcher should not keep loop alive */
 
   backend_modify = iouring_modify;
   backend_poll = iouring_poll;

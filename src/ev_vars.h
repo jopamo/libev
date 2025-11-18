@@ -106,8 +106,9 @@ VARx(int, iouring_entries) VARx(int, iouring_max_entries) VARx(void*, iouring_sq
                 VARx(uint32_t, iouring_sq_flags) VARx(uint32_t, iouring_sq_dropped) VARx(uint32_t, iouring_sq_array)
                     VARx(uint32_t, iouring_cq_head) VARx(uint32_t, iouring_cq_tail) VARx(uint32_t, iouring_cq_ring_mask)
                         VARx(uint32_t, iouring_cq_ring_entries) VARx(uint32_t, iouring_cq_overflow)
-                            VARx(uint32_t, iouring_cq_cqes) VARx(ev_tstamp, iouring_tfd_to) VARx(int, iouring_tfd)
-                                VARx(ev_io, iouring_tfd_w)
+                            VARx(uint32_t, iouring_cq_cqes) VARx(ev_tstamp, iouring_to) VARx(uint64_t, iouring_to_user)
+                                VARx(uint64_t, iouring_to_cancel_user) VARx(uint64_t, iouring_to_remove_user)
+                                    VARx(uint64_t, iouring_to_seq) VAR(iouring_to_ts, int64_t iouring_to_ts[2])
 #endif
 
 #if EV_USE_KQUEUE || EV_GENWRAP

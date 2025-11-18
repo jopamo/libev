@@ -67,9 +67,12 @@
 #define iouring_sq_tail ((loop)->iouring_sq_tail)
 #define iouring_sqes ((loop)->iouring_sqes)
 #define iouring_sqes_size ((loop)->iouring_sqes_size)
-#define iouring_tfd ((loop)->iouring_tfd)
-#define iouring_tfd_to ((loop)->iouring_tfd_to)
-#define iouring_tfd_w ((loop)->iouring_tfd_w)
+#define iouring_to ((loop)->iouring_to)
+#define iouring_to_cancel_user ((loop)->iouring_to_cancel_user)
+#define iouring_to_remove_user ((loop)->iouring_to_remove_user)
+#define iouring_to_seq ((loop)->iouring_to_seq)
+#define iouring_to_ts ((loop)->iouring_to_ts)
+#define iouring_to_user ((loop)->iouring_to_user)
 #define iouring_to_submit ((loop)->iouring_to_submit)
 #define kqueue_changecnt ((loop)->kqueue_changecnt)
 #define kqueue_changemax ((loop)->kqueue_changemax)
@@ -205,9 +208,12 @@
 #undef iouring_sq_tail
 #undef iouring_sqes
 #undef iouring_sqes_size
-#undef iouring_tfd
-#undef iouring_tfd_to
-#undef iouring_tfd_w
+#undef iouring_to
+#undef iouring_to_cancel_user
+#undef iouring_to_remove_user
+#undef iouring_to_seq
+#undef iouring_to_ts
+#undef iouring_to_user
 #undef iouring_to_submit
 #undef kqueue_changecnt
 #undef kqueue_changemax
