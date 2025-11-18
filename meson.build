@@ -193,18 +193,10 @@ pkgconfig.generate(
 
 system_libev_dep = disabler()
 system_libev_version = ''
-system_libev_cflags = []
-pkg_config = find_program('pkg-config', required: false)
-
-if pkg_config.found()
-  pkg_env = {'PKG_CONFIG_PATH': ''}
-  if run_command(pkg_config, '--exists', 'libev', env: pkg_env, check: false).returncode() == 0
-    cflags = run_command(pkg_config, '--cflags', 'libev', env: pkg_env, check: false).stdout().strip().split()
-    libs = run_command(pkg_config, '--libs', 'libev', env: pkg_env, check: false).stdout().strip().split()
-    system_libev_dep = declare_dependency(compile_args: cflags, link_args: libs)
-    system_libev_cflags = cflags
-    system_libev_version = run_command(pkg_config, '--modversion', 'libev', env: pkg_env, check: false).stdout().strip()
-  endif
+pkg_config_dep = dependency('libev', required: false)
+if pkg_config_dep.found()
+  system_libev_dep = pkg_config_dep
+  system_libev_version = pkg_config_dep.version()
 endif
 
 if not system_libev_dep.found()
