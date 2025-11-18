@@ -1968,65 +1968,24 @@ ecb_function_ ecb_const float ecb_binary16_to_float(uint16_t x) {
 
 #include <sys/syscall.h>
 
-/*
- * define some syscall wrappers for common architectures
- * this is mostly for nice looks during debugging, not performance.
- * our syscalls return < 0, not == -1, on error. which is good
- * enough for linux aio.
- * TODO: arm is also common nowadays, maybe even mips and x86
- * TODO: after implementing this, it suddenly looks like overkill, but its hard to remove...
- */
-#if __GNUC__ && __linux && ECB_AMD64 && !EV_FEATURE_CODE
-/* the costly errno access probably kills this for size optimisation */
+inline_size int ev_syscall_ret(long res) {
+  if (ecb_expect_true(res >= 0))
+    return (int)res;
 
-#define ev_syscall(nr, narg, arg1, arg2, arg3, arg4, arg5, arg6)                \
-  ({                                                                            \
-    long res;                                                                   \
-    register unsigned long r6 __asm__("r9");                                    \
-    register unsigned long r5 __asm__("r8");                                    \
-    register unsigned long r4 __asm__("r10");                                   \
-    register unsigned long r3 __asm__("rdx");                                   \
-    register unsigned long r2 __asm__("rsi");                                   \
-    register unsigned long r1 __asm__("rdi");                                   \
-    if (narg >= 6)                                                              \
-      r6 = (unsigned long)(arg6);                                               \
-    if (narg >= 5)                                                              \
-      r5 = (unsigned long)(arg5);                                               \
-    if (narg >= 4)                                                              \
-      r4 = (unsigned long)(arg4);                                               \
-    if (narg >= 3)                                                              \
-      r3 = (unsigned long)(arg3);                                               \
-    if (narg >= 2)                                                              \
-      r2 = (unsigned long)(arg2);                                               \
-    if (narg >= 1)                                                              \
-      r1 = (unsigned long)(arg1);                                               \
-    __asm__ __volatile__("syscall\n\t"                                          \
-                         : "=a"(res)                                            \
-                         : "0"(nr), "r"(r1), "r"(r2), "r"(r3), "r"(r4), "r"(r5) \
-                         : "cc", "r11", "cx", "memory");                        \
-    errno = -res;                                                               \
-    res;                                                                        \
-  })
+  int err = errno;
+  return -err;
+}
 
-#endif
-
-#ifdef ev_syscall
-#define ev_syscall0(nr) ev_syscall(nr, 0, 0, 0, 0, 0, 0, 0)
-#define ev_syscall1(nr, arg1) ev_syscall(nr, 1, arg1, 0, 0, 0, 0, 0)
-#define ev_syscall2(nr, arg1, arg2) ev_syscall(nr, 2, arg1, arg2, 0, 0, 0, 0)
-#define ev_syscall3(nr, arg1, arg2, arg3) ev_syscall(nr, 3, arg1, arg2, arg3, 0, 0, 0)
-#define ev_syscall4(nr, arg1, arg2, arg3, arg4) ev_syscall(nr, 3, arg1, arg2, arg3, arg4, 0, 0)
-#define ev_syscall5(nr, arg1, arg2, arg3, arg4, arg5) ev_syscall(nr, 5, arg1, arg2, arg3, arg4, arg5, 0)
-#define ev_syscall6(nr, arg1, arg2, arg3, arg4, arg5, arg6) ev_syscall(nr, 6, arg1, arg2, arg3, arg4, arg5, arg6)
-#else
-#define ev_syscall0(nr) syscall(nr)
-#define ev_syscall1(nr, arg1) syscall(nr, arg1)
-#define ev_syscall2(nr, arg1, arg2) syscall(nr, arg1, arg2)
-#define ev_syscall3(nr, arg1, arg2, arg3) syscall(nr, arg1, arg2, arg3)
-#define ev_syscall4(nr, arg1, arg2, arg3, arg4) syscall(nr, arg1, arg2, arg3, arg4)
-#define ev_syscall5(nr, arg1, arg2, arg3, arg4, arg5) syscall(nr, arg1, arg2, arg3, arg4, arg5)
-#define ev_syscall6(nr, arg1, arg2, arg3, arg4, arg5, arg6) syscall(nr, arg1, arg2, arg3, arg4, arg5, arg6)
-#endif
+#define ev_syscall0(nr) ev_syscall_ret(syscall((nr)))
+#define ev_syscall1(nr, arg1) ev_syscall_ret(syscall((nr), (arg1)))
+#define ev_syscall2(nr, arg1, arg2) ev_syscall_ret(syscall((nr), (arg1), (arg2)))
+#define ev_syscall3(nr, arg1, arg2, arg3) ev_syscall_ret(syscall((nr), (arg1), (arg2), (arg3)))
+#define ev_syscall4(nr, arg1, arg2, arg3, arg4) \
+  ev_syscall_ret(syscall((nr), (arg1), (arg2), (arg3), (arg4)))
+#define ev_syscall5(nr, arg1, arg2, arg3, arg4, arg5) \
+  ev_syscall_ret(syscall((nr), (arg1), (arg2), (arg3), (arg4), (arg5)))
+#define ev_syscall6(nr, arg1, arg2, arg3, arg4, arg5, arg6) \
+  ev_syscall_ret(syscall((nr), (arg1), (arg2), (arg3), (arg4), (arg5), (arg6)))
 
 #endif
 
