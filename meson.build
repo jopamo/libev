@@ -190,3 +190,29 @@ pkgconfig.generate(
   libraries: libev,
   subdirs: '.',
 )
+
+system_libev_dep = disabler()
+system_libev_version = ''
+system_libev_cflags = []
+pkg_config = find_program('pkg-config', required: false)
+
+if pkg_config.found()
+  pkg_env = {'PKG_CONFIG_PATH': ''}
+  if run_command(pkg_config, '--exists', 'libev', env: pkg_env, check: false).returncode() == 0
+    cflags = run_command(pkg_config, '--cflags', 'libev', env: pkg_env, check: false).stdout().strip().split()
+    libs = run_command(pkg_config, '--libs', 'libev', env: pkg_env, check: false).stdout().strip().split()
+    system_libev_dep = declare_dependency(compile_args: cflags, link_args: libs)
+    system_libev_cflags = cflags
+    system_libev_version = run_command(pkg_config, '--modversion', 'libev', env: pkg_env, check: false).stdout().strip()
+  endif
+endif
+
+if not system_libev_dep.found()
+  sys_lib = cc.find_library('ev', required: false)
+  if sys_lib.found() and cc.has_header('ev.h')
+    system_libev_dep = declare_dependency(dependencies: sys_lib)
+    system_libev_version = 'system'
+  endif
+endif
+
+subdir('tests')
