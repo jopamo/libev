@@ -63,7 +63,11 @@
  * file descriptors.
  */
 
+#include <errno.h>
+#include <fcntl.h>
+#include <stdint.h>
 #include <sys/epoll.h>
+#include <unistd.h>
 
 #define EV_EMASK_EPERM 0x80
 
@@ -158,8 +162,8 @@ static void epoll_poll(EV_P_ ev_tstamp timeout) {
 
     int fd = (uint32_t)ev->data.u64; /* mask out the lower 32 bits */
     int want = anfds[fd].events;
-    int got = (ev->events & (EPOLLOUT | EPOLLERR | EPOLLHUP) ? EV_WRITE : 0) |
-              (ev->events & (EPOLLIN | EPOLLERR | EPOLLHUP) ? EV_READ : 0);
+    int got = ((ev->events & (EPOLLOUT | EPOLLERR | EPOLLHUP)) ? EV_WRITE : 0) |
+              ((ev->events & (EPOLLIN | EPOLLERR | EPOLLHUP)) ? EV_READ : 0);
 
     /*
      * check for spurious notification.
