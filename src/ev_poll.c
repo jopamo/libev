@@ -38,9 +38,10 @@
  */
 
 #include <poll.h>
+#include <errno.h>
 
 inline_size void array_needsize_pollidx(int* base, int offset, int count) {
-  /* using memset (.., -1, ...) is tempting, we we try
+  /* using memset (.., -1, ...) is tempting, but we try
    * to be ultraportable
    */
   base += offset;
@@ -58,19 +59,29 @@ static void poll_modify(EV_P_ int fd, int oev, int nev) {
 
   idx = pollidxs[fd];
 
-  if (idx < 0) /* need to allocate a new pollfd */
-  {
+  /* allocate a new pollfd slot if needed */
+  if (idx < 0) {
     pollidxs[fd] = idx = pollcnt++;
     array_needsize(struct pollfd, polls, pollmax, pollcnt, array_needsize_noinit);
     polls[idx].fd = fd;
+    polls[idx].events = 0;
+    polls[idx].revents = 0;
   }
 
   assert(polls[idx].fd == fd);
 
-  if (nev)
-    polls[idx].events = (nev & EV_READ ? POLLIN : 0) | (nev & EV_WRITE ? POLLOUT : 0);
-  else /* remove pollfd */
-  {
+  if (nev) {
+    short events = 0;
+
+    if (nev & EV_READ)
+      events |= POLLIN;
+    if (nev & EV_WRITE)
+      events |= POLLOUT;
+
+    polls[idx].events = events;
+  }
+  else {
+    /* remove pollfd */
     pollidxs[fd] = -1;
 
     if (ecb_expect_true(idx < --pollcnt)) {
@@ -82,6 +93,7 @@ static void poll_modify(EV_P_ int fd, int oev, int nev) {
 
 static void poll_poll(EV_P_ ev_tstamp timeout) {
   struct pollfd* p;
+  struct pollfd* pend;
   int res;
 
   EV_RELEASE_CB;
@@ -95,24 +107,35 @@ static void poll_poll(EV_P_ ev_tstamp timeout) {
       fd_enomem(EV_A);
     else if (errno != EINTR)
       ev_syserr("(libev) poll");
+    return;
   }
-  else
-    for (p = polls; res; ++p) {
-      assert(("libev: poll returned illegal result, broken BSD kernel?", p < polls + pollcnt));
 
-      if (ecb_expect_false(p->revents)) /* this expect is debatable */
-      {
-        --res;
+  pend = polls + pollcnt;
 
-        if (ecb_expect_false(p->revents & POLLNVAL)) {
-          assert(("libev: poll found invalid fd in poll set", 0));
-          fd_kill(EV_A_ p->fd);
-        }
-        else
-          fd_event(EV_A_ p->fd, (p->revents & (POLLOUT | POLLERR | POLLHUP) ? EV_WRITE : 0) |
-                                    (p->revents & (POLLIN | POLLERR | POLLHUP) ? EV_READ : 0));
+  for (p = polls; res && p < pend; ++p) {
+    assert(("libev: poll returned illegal result, broken BSD kernel?", p < polls + pollcnt));
+
+    if (ecb_expect_false(p->revents)) /* this expect is debatable */
+    {
+      int events = 0;
+
+      --res;
+
+      if (ecb_expect_false(p->revents & POLLNVAL)) {
+        assert(("libev: poll found invalid fd in poll set", 0));
+        fd_kill(EV_A_ p->fd);
+        continue;
       }
+
+      if (p->revents & (POLLOUT | POLLERR | POLLHUP))
+        events |= EV_WRITE;
+      if (p->revents & (POLLIN | POLLERR | POLLHUP))
+        events |= EV_READ;
+
+      if (events)
+        fd_event(EV_A_ p->fd, events);
     }
+  }
 }
 
 inline_size int poll_init(EV_P_ int flags) {
