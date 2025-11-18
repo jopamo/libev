@@ -3890,21 +3890,36 @@ inline_size void periodics_reify(EV_P) {
   }
 }
 
-/* simply recalculate all periodics */
-/* TODO: maybe ensure that at least one event happens when jumping forward? */
+/* recalculate all periodics after a time jump, but keep overdue ones pending */
 ecb_noinline ecb_cold static void periodics_reschedule(EV_P) {
   int i;
+  int overdue = 0;
 
   /* adjust periodics after time jump */
   for (i = HEAP0; i < periodiccnt + HEAP0; ++i) {
     ev_periodic* w = (ev_periodic*)ANHE_w(periodics[i]);
+    ev_tstamp at = ANHE_at(periodics[i]);
+
+    /* let already overdue periodics fire once immediately after a jump */
+    if (at < ev_rt_now) {
+      overdue = 1;
+      ANHE_at_cache(periodics[i]);
+      continue;
+    }
 
     if (w->reschedule_cb)
       ev_at(w) = w->reschedule_cb(w, ev_rt_now);
     else if (w->interval)
       periodic_recalc(EV_A_ w);
 
-    ANHE_at_cache(periodics[i]);
+  }
+
+  if (periodiccnt && !overdue) {
+    ANHE* he = periodics + HEAP0;
+    ev_periodic* w = (ev_periodic*)ANHE_w(*he);
+
+    ev_at(w) = ev_rt_now;
+    ANHE_at_cache(*he);
   }
 
   reheap(periodics, periodiccnt);
@@ -4463,9 +4478,27 @@ ecb_noinline void ev_periodic_stop(EV_P_ ev_periodic* w) EV_NOEXCEPT {
 }
 
 ecb_noinline void ev_periodic_again(EV_P_ ev_periodic* w) EV_NOEXCEPT {
-  /* TODO: use adjustheap and recalculation */
-  ev_periodic_stop(EV_A_ w);
-  ev_periodic_start(EV_A_ w);
+  EV_FREQUENT_CHECK;
+
+  clear_pending(EV_A_(W) w);
+
+  if (ev_is_active(w)) {
+    if (w->reschedule_cb)
+      ev_at(w) = w->reschedule_cb(w, ev_rt_now);
+    else if (w->interval) {
+      EV_ASSERT_MSG("libev: ev_periodic_again called with negative interval value", w->interval >= 0.);
+      periodic_recalc(EV_A_ w);
+    }
+    else
+      ev_at(w) = w->offset;
+
+    ANHE_at_cache(periodics[ev_active(w)]);
+    adjustheap(periodics, periodiccnt, ev_active(w));
+  }
+  else
+    ev_periodic_start(EV_A_ w);
+
+  EV_FREQUENT_CHECK;
 }
 #endif
 
