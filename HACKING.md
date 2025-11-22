@@ -1,12 +1,61 @@
 # Repository Guidelines
 
-## Project Structure & Module Organization
-- `src/`: core event loop, backends, and platform conditionals; avoid leaking internal helpers outside this tree.
-- `include/`: public headers exported to consumers; keep API changes documented and guarded by feature macros from `config.h`.
-- `tests/`: Meson-driven unit and perf cases (`unit_*`, `perf_*`); extend `tests/meson.build` when adding coverage.
-- `build/`: generated Meson/Ninja artifacts; safe to remove when reconfiguring.
-- Docs and meta: `ev.pod`/`ev.3` for user-facing docs, `Changes` for release notes, `TODO` for backlog, `Symbols.*` for exported symbol lists.
-- `libev*/`: original implementation used for comparison.
+## Project layout
+
+- `src/`
+  - Core event loop implementation and backend drivers
+  - Files like `ev_loop_core.c`, `ev_epoll.c`, `ev_kqueue.c`, `ev_iouring.c`, `ev_poll.c`,
+    `ev_select.c`, `ev_port.c`, `ev_linuxaio.c`, `ev_win32.c`, `ev_timerfd.c` implement
+    backend-specific logic
+  - `ev.c` / `event.c` provide the main integration points and glue for the public API
+  - `ev_vars.h` and `ev_wrap.h` are internal headers; do not install or include them from outside `src/`
+
+- `include/`
+  - Installed, public headers:
+    - `ev.h` – primary libev-style API
+    - `ev++.h` – C++ convenience wrappers
+    - `event.h` – libevent compatibility API layer
+  - All public surface changes are gated by macros from `config.h` and documented in these headers
+
+- `tests/`
+  - Meson-driven test suite
+  - `unit_*.c` – focused unit tests for API behavior and invariants, e.g.:
+    - `unit_backend_flags.c` – backend flag reporting
+    - `unit_clock_maintenance.c` – timekeeping and drift handling
+    - `unit_ev_once.c`, `unit_ev_run_control.c`, `unit_loop_lifecycle.c` – loop lifecycle and control paths
+    - `unit_io_pipe.c` – I/O watcher behavior on pipes
+    - `unit_refcount_pending.c` – watcher refcount and pending queue semantics
+    - `unit_time_alloc_helpers.c` – time helper allocation and utility routines
+    - `unit_timer_basic.c` – basic timer semantics
+  - `perf_*.c` and perf scripts:
+    - `perf_timer_bench.c`, `perf_idle_bench.c`, `perf_prepare_check_bench.c` plus
+      `perf_bench_common.h`, `perf_compare.py`, `run_backend_perf.py`
+    - Used to compare backend latency, idle behavior, and cross-backend performance
+  - `validate_exported_symbols.py` checks that public ABI matches the `Symbols.*` lists
+  - New tests must be wired into `tests/meson.build`
+
+- `build/`
+  - Not tracked in git
+  - Holds Meson/Ninja build artifacts and can be removed at any time when reconfiguring
+
+- Documentation and meta
+  - `ev.pod` and `ev.3`
+    - User-facing documentation and manual page for the event API
+  - `Changes`
+    - Human-readable release notes in chronological order
+  - `TODO`
+    - Backlog for future work, cleanups, and potential new backends or features
+  - `HACKING.md`
+    - Contributor notes, coding style, and guidelines for changing backends or core loop behavior
+  - `Symbols.ev`, `Symbols.event`
+    - Exported symbol lists used to keep ABI stable and validate the public interface
+
+- `libev-4.33/`
+  - Unmodified reference implementation of upstream libev 4.33
+  - Used for:
+    - Behavioral comparison when changing internals or semantics in `src/`
+    - Tracking divergences and preparing migration notes
+  - Not installed and not part of the public API
 
 ## Build, Test, and Development Commands
 - Configure (default prefix): `meson setup build`.
