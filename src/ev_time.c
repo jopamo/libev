@@ -43,47 +43,26 @@ void ev_sleep(ev_tstamp delay) EV_NOEXCEPT {
 #if EV_USE_NANOSLEEP
   struct timespec ts;
 
-  while (delay > EV_TS_CONST(0.)) {
-    EV_TS_SET(ts, delay);
+  /* Modern Linux path: a single nanosleep
+   * If a signal interrupts the sleep (EINTR), we just return early
+   * This gives "sleep up to delay" semantics instead of "at least delay"
+   */
+  EV_TS_SET(ts, delay);
+  (void)nanosleep(&ts, &ts);
 
-    if (nanosleep(&ts, &ts) == 0)
-      break;
-
-    if (errno != EINTR)
-      break;
-
-    delay = EV_TS_GET(ts);
-  }
 #elif defined _WIN32
   /* maybe this should round up, as ms is very low resolution */
   /* compared to select (µs) or nanosleep (ns) */
   Sleep((unsigned long)(EV_TS_TO_MSEC(delay)));
 #else
   struct timeval tv;
-  ev_tstamp start = ev_time();
 
-  /* here we rely on sys/time.h + sys/types.h + unistd.h providing select */
-  /* something not guaranteed by newer posix versions, but guaranteed */
-  /* by older ones */
-  while (delay > EV_TS_CONST(0.)) {
-    EV_TV_SET(tv, delay);
-
-    if (select(0, 0, 0, 0, &tv) == 0)
-      break;
-
-    if (errno != EINTR)
-      break;
-
-    {
-      ev_tstamp now = ev_time();
-      ev_tstamp elapsed = now - start;
-
-      if (elapsed >= delay)
-        break;
-
-      delay -= elapsed;
-      start = now;
-    }
-  }
+  /* Fallback path for platforms without nanosleep
+   * On modern Linux this branch shouldn't be used (EV_USE_NANOSLEEP is enabled)
+   * but we keep it for compatibility
+   */
+  EV_TV_SET(tv, delay);
+  /* if select is interrupted by a signal (EINTR), we just return */
+  (void)select(0, 0, 0, 0, &tv);
 #endif
 }
