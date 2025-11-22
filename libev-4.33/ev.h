@@ -220,13 +220,13 @@ typedef EV_TSTAMP_T ev_tstamp;
 
   /* eventmask, revents, events... */
   enum {
-    EV_UNDEF = (int)0xFFFFFFFF, /* guaranteed to be invalid */
-    EV_NONE = 0x00,             /* no events */
-    EV_READ = 0x01,             /* ev_io detected read will not block */
-    EV_WRITE = 0x02,            /* ev_io detected write will not block */
+    EV_UNDEF = (int)0xFFFFFFFF,                              /* guaranteed to be invalid */
+    EV_NONE = 0x00,                                          /* no events */
+    EV_READ = 0x01,                                          /* ev_io detected read will not block */
+    EV_WRITE = 0x02,                                         /* ev_io detected write will not block */
     EV__IOFDSET = (int)(1u << (sizeof(int) * CHAR_BIT - 2)), /* internal use only */
-    EV_IO = EV_READ,            /* alias for type-detection */
-    EV_TIMER = 0x00000100,      /* timer timed out */
+    EV_IO = EV_READ,                                         /* alias for type-detection */
+    EV_TIMER = 0x00000100,                                   /* timer timed out */
 #if EV_COMPAT3
     EV_TIMEOUT = EV_TIMER, /* pre 4.0 API compatibility */
 #endif
@@ -683,16 +683,16 @@ ev_is_default_loop (void) EV_NOEXCEPT
   do {                            \
     (ev)->events = (events_);     \
   } while (0)
-#define ev_io_set(ev, fd_, events_)       \
-  do {                                    \
-    int ev_fd_ = (fd_);                   \
-    (ev)->fd = ev_fd_ | EV__IOFDSET;      \
-    (ev)->events = (events_);             \
+#define ev_io_set(ev, fd_, events_)  \
+  do {                               \
+    int ev_fd_ = (fd_);              \
+    (ev)->fd = ev_fd_ | EV__IOFDSET; \
+    (ev)->events = (events_);        \
   } while (0)
 
-EV_INLINE int ev_io_fd(const ev_io* w) EV_NOEXCEPT {
-  return w->fd & (EV__IOFDSET - 1);
-}
+  EV_INLINE int ev_io_fd(const ev_io* w) EV_NOEXCEPT {
+    return w->fd & (EV__IOFDSET - 1);
+  }
 #define ev_timer_set(ev, after_, repeat_)    \
   do {                                       \
     ((ev_watcher_time*)(ev))->at = (after_); \
