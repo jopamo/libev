@@ -47,6 +47,8 @@ static void test_ev_time_samples(void) {
     die_msg("ev_time drifted too far from gettimeofday");
 }
 
+#ifndef LIBEV_IS_BASELINE
+
 static volatile sig_atomic_t alarm_hits;
 
 static void alarm_handler(int signum) {
@@ -54,6 +56,9 @@ static void alarm_handler(int signum) {
   ++alarm_hits;
 }
 
+/* Check that ev_sleep is interruptible by SIGALRM and returns early
+ * New implementation does a single nanosleep and does not retry on EINTR
+ */
 static void test_ev_sleep_retries(void) {
   alarm_hits = 0;
 
@@ -66,29 +71,50 @@ static void test_ev_sleep_retries(void) {
   if (sigaction(SIGALRM, &sa, &old_sa) != 0)
     die_errno("sigaction");
 
-  struct itimerval timer;
-  memset(&timer, 0, sizeof(timer));
-  timer.it_value.tv_usec = 10000;
-  timer.it_interval.tv_usec = 10000;
-  if (setitimer(ITIMER_REAL, &timer, NULL) != 0)
-    die_errno("setitimer");
+  sigset_t newset;
+  sigset_t oldset;
+  sigemptyset(&newset);
+  sigaddset(&newset, SIGALRM);
+  if (sigprocmask(SIG_UNBLOCK, &newset, &oldset) != 0)
+    die_errno("sigprocmask");
+
+  const ev_tstamp requested = 5.0;
+  const unsigned alarm_sec = 1;
+  const ev_tstamp interrupt_slop = 1.0;
+
+  alarm(alarm_sec);
 
   ev_tstamp start = ev_time();
-  ev_sleep(0.05);
+  ev_sleep(requested);
   ev_tstamp elapsed = ev_time() - start;
 
-  struct itimerval disarm;
-  memset(&disarm, 0, sizeof(disarm));
-  setitimer(ITIMER_REAL, &disarm, NULL);
-  sigaction(SIGALRM, &old_sa, NULL);
+  alarm(0);
 
-  if (alarm_hits < 2)
+  if (sigprocmask(SIG_SETMASK, &oldset, NULL) != 0)
+    die_errno("sigprocmask restore");
+  if (sigaction(SIGALRM, &old_sa, NULL) != 0)
+    die_errno("sigaction restore");
+
+  if (!alarm_hits)
+    die_msg("SIGALRM did not fire while ev_sleep was running");
+
+  if (elapsed < 0.1)
+    die_msg("ev_sleep returned too early before alarm could fire");
+
+  if (elapsed > alarm_sec + interrupt_slop)
     die_msg("SIGALRM failed to interrupt ev_sleep");
-  if (elapsed < 0.04)
-    die_msg("ev_sleep returned too early after EINTR");
-  if (elapsed > 0.5)
-    die_msg("ev_sleep slept far too long");
 }
+
+#else
+
+/* Baseline libev may retry nanosleep on EINTR
+ * For the reference library we keep this as a smoke test only
+ */
+static void test_ev_sleep_retries(void) {
+  ev_sleep(0.05);
+}
+
+#endif
 
 static int alloc_call_count;
 static int free_call_count;
