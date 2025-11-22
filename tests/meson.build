@@ -96,6 +96,7 @@ foreach t : [
   ['unit-ev-run-control', 'unit_ev_run_control.c'],
   ['unit-refcount-pending', 'unit_refcount_pending.c'],
   ['unit-clock-maintenance', 'unit_clock_maintenance.c'],
+  ['unit-time-alloc-helpers', 'unit_time_alloc_helpers.c'],
 ]
   exe = executable(
     t[0],

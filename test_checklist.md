@@ -8,7 +8,7 @@ We need to port coverage expectations from the original libev 4.33 implementatio
 - [x] **`ev_run` control flow** — Validate `EVRUN_NOWAIT`, `EVRUN_ONCE`, `ev_break` cancel/one/all modes, and `loop_count`/`loop_depth` accounting exposed via `EV_FEATURE_API` (src/ev_api.c:879-1104).
 - [x] **Refcount & pending hooks** — Exercise `ev_ref`, `ev_unref`, `ev_pending_count`, `ev_set_invoke_pending_cb`, `ev_set_loop_release_cb`, and `ev_set_userdata` to ensure refcounts and callback plumbing match upstream (src/ev_api.c:135-158, 630-657, 1140-1179).
 - [x] **Clock maintenance** — Verify `ev_now_update`, `ev_suspend`, `ev_resume`, and large time jumps adjust timers/periodics without duplicate firings via `timers_reschedule`/`periodics_reschedule` (src/ev_api.c:768-876, 1101-1117). Covered by `tests/unit_clock_maintenance.c`.
-- [ ] **Time & allocation helpers** — Mirror upstream behavior for `ev_time`, `ev_sleep` (including EINTR loops), `ev_set_allocator`, and `ev_set_syserr_cb` (src/ev_time.c:4-89, src/ev.c:2128-2187).
+- [x] **Time & allocation helpers** — Mirror upstream behavior for `ev_time`, `ev_sleep` (including EINTR loops), `ev_set_allocator`, and `ev_set_syserr_cb` (src/ev_time.c:4-89, src/ev.c:2128-2187). Covered by `tests/unit_time_alloc_helpers.c`.
 
 ## Watcher Primitives
 - [ ] **Watcher init & priority** — Confirm `ev_init`, `ev_set_cb`, `ev_set_priority`, and `ev_clear_pending` clamp invalid priorities and merge events correctly when `ev_feed_event` fires multiple times (include/ev.h:675-820, src/ev_loop_core.c:71-114).
