@@ -94,6 +94,7 @@ foreach t : [
   ['unit-event-timer-reset', 'unit_event_timer_reset.c'],
   ['unit-loop-lifecycle', 'unit_loop_lifecycle.c'],
   ['unit-ev-run-control', 'unit_ev_run_control.c'],
+  ['unit-refcount-pending', 'unit_refcount_pending.c'],
 ]
   exe = executable(
     t[0],
