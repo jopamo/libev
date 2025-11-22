@@ -11,8 +11,8 @@ We need to port coverage expectations from the original libev 4.33 implementatio
 - [x] **Time & allocation helpers** — Mirror upstream behavior for `ev_time`, `ev_sleep` (including EINTR loops), `ev_set_allocator`, and `ev_set_syserr_cb` (src/ev_time.c:4-89, src/ev.c:2128-2187). Covered by `tests/unit_time_alloc_helpers.c`.
 
 ## Watcher Primitives
-- [ ] **Watcher init & priority** — Confirm `ev_init`, `ev_set_cb`, `ev_set_priority`, and `ev_clear_pending` clamp invalid priorities and merge events correctly when `ev_feed_event` fires multiple times (include/ev.h:675-820, src/ev_loop_core.c:71-114).
-- [ ] **FD bookkeeping** — Stress `fd_event`, `ev_feed_fd_event`, and `fd_reify` by mutating watchers mid-callback and ensuring reify skips fds with `reify` set (src/ev_loop_core.c:115-221).
+- [x] **Watcher init & priority** — Confirm `ev_init`, `ev_set_cb`, `ev_set_priority`, and `ev_clear_pending` clamp invalid priorities and merge events correctly when `ev_feed_event` fires multiple times (include/ev.h:675-820, src/ev_loop_core.c:71-114). Covered by `tests/unit_watcher_priority.c`.
+- [x] **FD bookkeeping** — Stress `fd_event`, `ev_feed_fd_event`, and `fd_reify` by mutating watchers mid-callback and ensuring reify skips fds with `reify` set (src/ev_loop_core.c:115-221). Covered by `tests/unit_fd_bookkeeping.c`.
 - [ ] **I/O watchers** — Add suites for `ev_io_start/stop`: clamping invalid masks, stacking multiple watchers per fd, `EV__IOFDSET` bookkeeping, and `fd_change` propagation (src/ev_api.c:1184-1238, include/ev.h:682-695).
 - [ ] **Timers** — Test repeating vs one-shot timers, `ev_timer_again`, `ev_timer_remaining`, and heap ordering from `timers_reify` (src/ev_api.c:1241-1314, 677-707).
 - [ ] **Periodics** — Cover `offset`/`interval`, user `reschedule_cb`, `ev_periodic_again`, and timerfd initialization when `EV_USE_TIMERFD` is enabled (src/ev_api.c:1317-1396, src/ev_timerfd.c:1-40).

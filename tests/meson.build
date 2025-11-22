@@ -100,6 +100,11 @@ unit_tests = [
   ['unit-clock-maintenance', 'unit_clock_maintenance.c'],
   ['unit-time-alloc-helpers', 'unit_time_alloc_helpers.c'],
   ['unit-watcher-init-priority', 'unit_watcher_init_priority.c'],
+  ['unit-watcher-priority', 'unit_watcher_priority.c'],
+  ['unit-fd-bookkeeping', 'unit_fd_bookkeeping.c'],
+  ['unit-io-watchers', 'unit_io_watchers.c'],
+  ['unit-timers', 'unit_timers.c'],
+  ['unit-periodics', 'unit_periodics.c'],
 ]
 
 foreach t : unit_tests

@@ -32,7 +32,7 @@ Highlights include:
 
 Examples of projects embedding libev: EV Perl module, node.js, auditd, rxvt-unicode, gvpe, Deliantra MMORPG server, Rubinius VM, Ebb web server, Rev event toolkit.
 
-## Contributors
+## Original Contributors
 
 Libev was written and designed by Marc Lehmann and Emanuele Giaquinta.
 
