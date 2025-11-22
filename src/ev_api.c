@@ -1027,15 +1027,10 @@ int ev_run(EV_P_ int flags) {
 #endif
       assert((loop_done = EVBREAK_RECURSE, 1)); /* assert for side effect */
 
-      if (ecb_expect_true(activeio
-#if EV_PERIODIC_ENABLE
-                          || periodiccnt
-#endif
-                          || timercnt))
+      if (ecb_expect_true(activeio))
         backend_poll(EV_A_ waittime);
-      else {
-        /* No pending fd/timer watchers: fall back to a userspace sleep so we do
-         * not pay for a backend poll that would immediately return. */
+      else if (ecb_expect_true(waittime > EV_TS_CONST(0.))) {
+        /* No kernel fds to poll, so just sleep in userspace until the next timeout. */
         EV_RELEASE_CB;
         ev_sleep(waittime);
         EV_ACQUIRE_CB;

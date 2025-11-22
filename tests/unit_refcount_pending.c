@@ -179,7 +179,8 @@ static void test_release_hooks(struct ev_loop* loop) {
   ev_set_loop_release_cb(loop, release_hook, acquire_hook);
 
   ev_timer timer;
-  ev_timer_init(&timer, release_timer_cb, 0., 0.);
+  /* Use a non-zero delay so ev_run has to block and trigger release hooks. */
+  ev_timer_init(&timer, release_timer_cb, 0.01, 0.);
   ev_timer_start(loop, &timer);
 
   ev_run(loop, 0);
