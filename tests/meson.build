@@ -103,3 +103,18 @@ foreach t : [
 
   test(t[0], exe, timeout: 30)
 endforeach
+
+backend_flags_test = executable(
+  'unit-backend-flags',
+  files('unit_backend_flags.c'),
+  include_directories: all_incs,
+  dependencies: libev_dep,
+  install: false,
+)
+
+test(
+  'unit-backend-flags',
+  backend_flags_test,
+  env: {'LIBEV_BASELINE_LIB': orig_libev.full_path()},
+  timeout: 30,
+)
