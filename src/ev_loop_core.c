@@ -1,4 +1,6 @@
-/* Core watcher/event logic split from ev.c. */
+/* src/ev_loop_core.c
+ * Core watcher/event logic split from ev.c
+ */
 
 #define MALLOC_ROUND 4096 /* prefer to allocate in chunks of this size, must be 2**n and >> 4 longs */
 
@@ -81,7 +83,8 @@ ecb_noinline void ev_feed_event(EV_P_ void* w, int revents) EV_NOEXCEPT {
     pendings[pri][w_->pending - 1].events = revents;
   }
 
-  pendingpri = NUMPRI - 1;
+  if (pri > pendingpri)
+    pendingpri = pri;
 }
 
 inline_speed void feed_reverse(EV_P_ W w) {
@@ -154,6 +157,7 @@ inline_size void fd_reify(EV_P) {
 
     if (anfd->reify & EV__IOFDSET && anfd->head) {
       SOCKET handle = EV_FD_TO_WIN32_HANDLE(fd);
+      unsigned long arg = 0;
 
       EV_ASSERT_MSG("libev: only socket fds supported in this configuration", ioctlsocket(handle, FIONREAD, &arg) == 0);
 
