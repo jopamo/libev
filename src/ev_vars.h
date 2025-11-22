@@ -1,40 +1,5 @@
-/*
+/* src/ev_vars.h
  * loop member variable declarations
- *
- * Copyright (c) 2007,2008,2009,2010,2011,2012,2013,2019 Marc Alexander Lehmann <libev@schmorp.de>
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without modifica-
- * tion, are permitted provided that the following conditions are met:
- *
- *   1.  Redistributions of source code must retain the above copyright notice,
- *       this list of conditions and the following disclaimer.
- *
- *   2.  Redistributions in binary form must reproduce the above copyright
- *       notice, this list of conditions and the following disclaimer in the
- *       documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MER-
- * CHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO
- * EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPE-
- * CIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
- * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTH-
- * ERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
- * OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * Alternatively, the contents of this file may be used under the terms of
- * the GNU General Public License ("GPL") version 2 or any later version,
- * in which case the provisions of the GPL are applicable instead of
- * the above. If you wish to allow the use of your version of this file
- * only under the terms of the GPL and not to allow others to use your
- * version of this file under the BSD license, indicate your decision
- * by deleting the provisions above and replace them with the notice
- * and other provisions required by the GPL. If you do not delete the
- * provisions above, a recipient may use your version of this file under
- * either the BSD or the GPL.
  */
 
 #define VARx(type, name) VAR(name, type name)
@@ -86,64 +51,81 @@ VARx(ev_tstamp, now_floor)     /* last time we refreshed rt_time */
 #endif
 
 #if EV_USE_EPOLL || EV_GENWRAP
-        VARx(struct epoll_event*, epoll_events) VARx(int, epoll_eventmax) VARx(int*, epoll_eperms)
-            VARx(int, epoll_epermcnt) VARx(int, epoll_epermmax)
+        VARx(struct epoll_event*,
+             epoll_events) VARx(int, epoll_eventmax) VARx(int*, epoll_eperms) VARx(int,
+                                                                                   epoll_epermcnt) VARx(int,
+                                                                                                        epoll_epermmax)
 #endif
 
 #if EV_USE_LINUXAIO || EV_GENWRAP
-                VARx(aio_context_t, linuxaio_ctx) VARx(int, linuxaio_iteration) VARx(struct aniocb**, linuxaio_iocbps)
-                    VARx(int, linuxaio_iocbpmax) VARx(struct aniocb*, linuxaio_iocbfreelist)
-                        VARx(struct linuxaio_iocb_block*, linuxaio_iocbblocks) VARx(struct iocb**, linuxaio_submits)
-                            VARx(int, linuxaio_submitcnt) VARx(int, linuxaio_submitmax) VARx(ev_io, linuxaio_epoll_w)
+            VARx(aio_context_t,
+                 linuxaio_ctx) VARx(int, linuxaio_iteration) VARx(struct aniocb**,
+                                                                  linuxaio_iocbps) VARx(int, linuxaio_iocbpmax)
+                VARx(struct aniocb*, linuxaio_iocbfreelist) VARx(struct linuxaio_iocb_block*, linuxaio_iocbblocks) VARx(
+                    struct iocb**,
+                    linuxaio_submits) VARx(int, linuxaio_submitcnt) VARx(int, linuxaio_submitmax) VARx(ev_io,
+                                                                                                       linuxaio_epoll_w)
 #endif
 
 #if EV_USE_IOURING || EV_GENWRAP
-                                VARx(int, iouring_fd) VARx(unsigned, iouring_to_submit);
-VARx(int, iouring_entries) VARx(int, iouring_max_entries) VARx(unsigned, iouring_cq_entries)
-    VARx(void*, iouring_sq_ring) VARx(void*, iouring_cq_ring) VARx(void*, iouring_sqes) VARx(uint32_t,
-                                                                                             iouring_sq_ring_size)
-        VARx(uint32_t, iouring_cq_ring_size) VARx(uint32_t, iouring_sqes_size) VARx(uint32_t, iouring_sq_head)
-            VARx(uint32_t, iouring_sq_tail) VARx(uint32_t, iouring_sq_ring_mask) VARx(uint32_t, iouring_sq_ring_entries)
-                VARx(uint32_t, iouring_sq_flags) VARx(uint32_t, iouring_sq_dropped) VARx(uint32_t, iouring_sq_array)
-                    VARx(uint32_t, iouring_cq_head) VARx(uint32_t, iouring_cq_tail) VARx(uint32_t, iouring_cq_ring_mask)
-                        VARx(uint32_t, iouring_cq_ring_entries) VARx(uint32_t, iouring_cq_overflow)
-                            VARx(uint32_t, iouring_cq_cqes) VARx(ev_tstamp, iouring_to) VARx(uint64_t, iouring_to_user)
-                                VARx(uint64_t, iouring_to_cancel_user) VARx(uint64_t, iouring_to_remove_user)
-                                    VARx(uint64_t, iouring_to_seq) VAR(iouring_to_ts, int64_t iouring_to_ts[2])
+                    VARx(int, iouring_fd) VARx(unsigned, iouring_to_submit) VARx(int, iouring_entries) VARx(
+                        int,
+                        iouring_max_entries) VARx(unsigned, iouring_cq_entries) VARx(void*, iouring_sq_ring)
+                        VARx(void*, iouring_cq_ring) VARx(void*, iouring_sqes) VARx(uint32_t, iouring_sq_ring_size)
+                            VARx(uint32_t, iouring_cq_ring_size) VARx(uint32_t, iouring_sqes_size) VARx(
+                                uint32_t,
+                                iouring_sq_head) VARx(uint32_t, iouring_sq_tail) VARx(uint32_t, iouring_sq_ring_mask)
+                                VARx(uint32_t, iouring_sq_ring_entries) VARx(uint32_t, iouring_sq_flags) VARx(
+                                    uint32_t,
+                                    iouring_sq_dropped) VARx(uint32_t, iouring_sq_array) VARx(uint32_t, iouring_cq_head)
+                                    VARx(uint32_t, iouring_cq_tail) VARx(uint32_t, iouring_cq_ring_mask) VARx(
+                                        uint32_t,
+                                        iouring_cq_ring_entries) VARx(uint32_t, iouring_cq_overflow)
+                                        VARx(uint32_t, iouring_cq_cqes) VARx(ev_tstamp, iouring_to) VARx(
+                                            uint64_t,
+                                            iouring_to_user) VARx(uint64_t,
+                                                                  iouring_to_cancel_user) VARx(uint64_t,
+                                                                                               iouring_to_remove_user)
+                                            VARx(uint64_t, iouring_to_seq) VAR(iouring_to_ts, int64_t iouring_to_ts[2])
 #endif
 
 #if EV_USE_KQUEUE || EV_GENWRAP
-                                        VARx(pid_t, kqueue_fd_pid) VARx(struct kevent*,
-                                                                        kqueue_changes) VARx(int, kqueue_changemax)
-                                            VARx(int, kqueue_changecnt) VARx(struct kevent*,
-                                                                             kqueue_events) VARx(int, kqueue_eventmax)
+                                                VARx(pid_t, kqueue_fd_pid) VARx(struct kevent*, kqueue_changes) VARx(
+                                                    int,
+                                                    kqueue_changemax) VARx(int, kqueue_changecnt)
+                                                    VARx(struct kevent*,
+                                                         kqueue_events) VARx(int, kqueue_eventmax)
 #endif
 
 #if EV_USE_PORT || EV_GENWRAP
-                                                VARx(struct port_event*, port_events) VARx(int, port_eventmax)
+                                                        VARx(struct port_event*, port_events) VARx(int, port_eventmax)
 #endif
 
 #if EV_USE_IOCP || EV_GENWRAP
-                                                    VARx(HANDLE, iocp)
+                                                            VARx(HANDLE, iocp)
 #endif
 
-                                                        VARx(int*, fdchanges) VARx(int, fdchangemax) VARx(int,
-                                                                                                          fdchangecnt)
+                                                                VARx(int*, fdchanges) VARx(int, fdchangemax) VARx(
+                                                                    int,
+                                                                    fdchangecnt)
 
-                                                            VARx(ANHE*, timers) VARx(int, timermax) VARx(int, timercnt)
+                                                                    VARx(ANHE*,
+                                                                         timers) VARx(int, timermax) VARx(int, timercnt)
 
 #if EV_PERIODIC_ENABLE || EV_GENWRAP
-                                                                VARx(ANHE*, periodics) VARx(int, periodicmax)
-                                                                    VARx(int, periodiccnt)
+                                                                        VARx(ANHE*, periodics) VARx(int, periodicmax)
+                                                                            VARx(int, periodiccnt)
 #endif
 
 #if EV_IDLE_ENABLE || EV_GENWRAP
-                                                                        VAR(idles, ev_idle** idles[NUMPRI])
-                                                                            VAR(idlemax, int idlemax[NUMPRI])
-                                                                                VAR(idlecnt, int idlecnt[NUMPRI])
+                                                                                VAR(idles, ev_idle** idles[NUMPRI]) VAR(
+                                                                                    idlemax,
+                                                                                    int idlemax[NUMPRI])
+                                                                                    VAR(idlecnt, int idlecnt[NUMPRI])
 #endif
-                                                                                    VARx(int,
-                                                                                         idleall) /* total number */
+
+                                                                                        VARx(int,
+                                                                                             idleall) /* total number */
 
     VARx(struct ev_prepare**, prepares) VARx(int, preparemax) VARx(int, preparecnt)
 
@@ -169,6 +151,7 @@ VARx(int, iouring_entries) VARx(int, iouring_max_entries) VARx(unsigned, iouring
 #endif
 
         VARx(EV_ATOMIC_T, sig_pending)
+
 #if EV_USE_SIGNALFD || EV_GENWRAP
             VARx(int, sigfd) VARx(ev_io, sigfd_w) VARx(sigset_t, sigfd_set)
 #endif
