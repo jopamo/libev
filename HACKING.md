@@ -6,6 +6,7 @@
 - `tests/`: Meson-driven unit and perf cases (`unit_*`, `perf_*`); extend `tests/meson.build` when adding coverage.
 - `build/`: generated Meson/Ninja artifacts; safe to remove when reconfiguring.
 - Docs and meta: `ev.pod`/`ev.3` for user-facing docs, `Changes` for release notes, `TODO` for backlog, `Symbols.*` for exported symbol lists.
+- `libev*/`: original implementation used for comparison.
 
 ## Build, Test, and Development Commands
 - Configure (default prefix): `meson setup build`.

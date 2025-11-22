@@ -91,6 +91,7 @@ foreach t : [
   ['unit-timer-basic', 'unit_timer_basic.c'],
   ['unit-io-pipe', 'unit_io_pipe.c'],
   ['unit-ev-once', 'unit_ev_once.c'],
+  ['unit-event-timer-reset', 'unit_event_timer_reset.c'],
 ]
   exe = executable(
     t[0],

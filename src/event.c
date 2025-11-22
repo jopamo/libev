@@ -87,8 +87,9 @@ const char* event_get_method(void) {
 
 void* event_init(void) {
 #if EV_MULTIPLICITY
-  /* keep a single global base mapping to the default loop for speed and ABI compatibility */
-  if (!ev_x_cur)
+  if (ev_x_cur)
+    ev_x_cur = (struct event_base*)ev_loop_new(EVFLAG_AUTO);
+  else
     ev_x_cur = (struct event_base*)ev_default_loop(EVFLAG_AUTO);
 #else
   EV_ASSERT_MSG("libev: multiple event bases not supported when not compiled with EV_MULTIPLICITY", !ev_x_cur);
@@ -233,19 +234,12 @@ int event_add(struct event* ev, struct timeval* tv) {
   }
 
   if (tv) {
-    const ev_tstamp after = ev_tv_get(tv);
-
-    if (!ev_is_active(&ev->to) || ev->to.repeat != after) {
-      ev->to.repeat = after;
-      ev_timer_again(EV_A_ & ev->to);
-    }
-
+    ev->to.repeat = ev_tv_get(tv);
+    ev_timer_again(EV_A_ & ev->to);
     ev->ev_flags |= EVLIST_TIMEOUT;
   }
   else {
-    if (ev_is_active(&ev->to))
-      ev_timer_stop(EV_A_ & ev->to);
-
+    ev_timer_stop(EV_A_ & ev->to);
     ev->ev_flags &= ~EVLIST_TIMEOUT;
   }
 
