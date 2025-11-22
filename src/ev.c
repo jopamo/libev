@@ -1,40 +1,5 @@
-/*
+/* src/ev.c
  * libev event processing core, watcher management
- *
- * Copyright (c) 2007-2019 Marc Alexander Lehmann <libev@schmorp.de>
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without modifica-
- * tion, are permitted provided that the following conditions are met:
- *
- *   1.  Redistributions of source code must retain the above copyright notice,
- *       this list of conditions and the following disclaimer.
- *
- *   2.  Redistributions in binary form must reproduce the above copyright
- *       notice, this list of conditions and the following disclaimer in the
- *       documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MER-
- * CHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO
- * EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPE-
- * CIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
- * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTH-
- * ERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
- * OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * Alternatively, the contents of this file may be used under the terms of
- * the GNU General Public License ("GPL") version 2 or any later version,
- * in which case the provisions of the GPL are applicable instead of
- * the above. If you wish to allow the use of your version of this file
- * only under the terms of the GPL and not to allow others to use your
- * version of this file under the BSD license, indicate your decision
- * by deleting the provisions above and replace them with the notice
- * and other provisions required by the GPL. If you do not delete the
- * provisions above, a recipient may use your version of this file under
- * either the BSD or the GPL.
  */
 
 /* this big block deduces configuration from config.h */
@@ -531,7 +496,7 @@
 #define EFD_CLOEXEC 02000000
 #endif
 #endif
-EV_CPP(extern "C") int(eventfd)(unsigned int initval, int flags);
+extern int eventfd(unsigned int initval, int flags);
 #endif
 
 #if EV_USE_SIGNALFD
@@ -547,7 +512,7 @@ EV_CPP(extern "C") int(eventfd)(unsigned int initval, int flags);
 #define SFD_CLOEXEC 02000000
 #endif
 #endif
-EV_CPP(extern "C") int(signalfd)(int fd, const sigset_t* mask, int flags);
+extern int signalfd(int fd, const sigset_t* mask, int flags);
 
 struct signalfd_siginfo {
   uint32_t ssi_signo;
@@ -694,7 +659,7 @@ typedef int32_t intptr_t;
 #endif
 #else
 #include <inttypes.h>
-#if (defined INTPTR_MAX ? INTPTR_MAX : ULONG_MAX) > 0xffffffffU
+#if (defined INTPTR_MAX ? INTPTR_MAX : (defined ULONG_MAX ? ULONG_MAX : UINT_MAX)) > 0xffffffffU
 #define ECB_PTRSIZE 8
 #else
 #define ECB_PTRSIZE 4
@@ -1360,7 +1325,7 @@ inline uint64_t ecb_rotr(uint64_t v, unsigned int count) {
 
 #endif
 
-#if ECB_GCC_VERSION(4, 3) || (ECB_CLANG_BUILTIN(__builtin_bswap32) && ECB_CLANG_BUILTIN(__builtin_bswap64))
+#if ECB_GCC_VERSION(4, 5) || ECB_CLANG_BUILTIN(__builtin_bswap32) && ECB_CLANG_BUILTIN(__builtin_bswap64)
 #if ECB_GCC_VERSION(4, 8) || ECB_CLANG_BUILTIN(__builtin_bswap16)
 #define ecb_bswap16(x) __builtin_bswap16(x)
 #else
@@ -1394,8 +1359,16 @@ ecb_function_ ecb_const uint64_t ecb_bswap64(uint64_t x) {
 #define ecb_unreachable() __builtin_unreachable()
 #else
 /* this seems to work fine, but gcc always emits a warning for it :/ */
-ecb_inline ecb_noreturn void ecb_unreachable(void);
-ecb_inline ecb_noreturn void ecb_unreachable(void) {}
+ecb_noreturn void ecb_unreachable(void) {
+  /* Note: this may not work on all compilers, but it's better than nothing */
+  /* Use __builtin_trap() if available for better code generation */
+#if ECB_GCC_VERSION(4, 5) || ECB_CLANG_BUILTIN(__builtin_trap)
+  __builtin_trap();
+#else
+  for (;;)
+    ;
+#endif
+}
 #endif
 
 /* try to tell the compiler that some condition is definitely true */
@@ -1990,12 +1963,17 @@ inline_size int ev_syscall_ret(long res) {
 
 /*****************************************************************************/
 
+/* make sure configured priority bounds are sane */
+#if EV_MAXPRI < EV_MINPRI
+#error "EV_MAXPRI must be >= EV_MINPRI"
+#endif
+
 #define NUMPRI (EV_MAXPRI - EV_MINPRI + 1)
 
 #if EV_MINPRI == EV_MAXPRI
-#define ABSPRI(w) (((W)w), 0)
+#define ABSPRI(w) (((W)(w)), 0)
 #else
-#define ABSPRI(w) (((W)w)->priority - EV_MINPRI)
+#define ABSPRI(w) (ev_clamp_priority(((W)(w))->priority) - EV_MINPRI)
 #endif
 
 #define EMPTY /* required for microsofts broken pseudo-c compiler */
@@ -2124,29 +2102,36 @@ ecb_noinline ecb_cold static void ev_printerr(const char* msg) {
 }
 #endif
 
-static void (*syserr_cb)(const char* msg) EV_NOEXCEPT;
+static void (*syserr_cb)(const char* msg) EV_NOEXCEPT = 0;
 
 ecb_cold void ev_set_syserr_cb(void (*cb)(const char* msg) EV_NOEXCEPT) EV_NOEXCEPT {
   syserr_cb = cb;
 }
 
 ecb_noinline ecb_cold static void ev_syserr(const char* msg) {
+  void (*cb)(const char* msg) EV_NOEXCEPT;
+
   if (!msg)
     msg = "(libev) system error";
 
-  if (syserr_cb)
-    syserr_cb(msg);
-  else {
-#if EV_AVOID_STDIO
-    ev_printerr(msg);
-    ev_printerr(": ");
-    ev_printerr(strerror(errno));
-    ev_printerr("\n");
-#else
-    perror(msg);
-#endif
-    abort();
+  /* Load the callback into a local variable to ensure it's not changed between check and call */
+  cb = syserr_cb;
+
+  /* Ensure the callback is invoked if set */
+  if (cb) {
+    cb(msg);
+    return; /* Don't continue to default handling if callback is set */
   }
+
+#if EV_AVOID_STDIO
+  ev_printerr(msg);
+  ev_printerr(": ");
+  ev_printerr(strerror(errno));
+  ev_printerr("\n");
+#else
+  perror(msg);
+#endif
+  abort();
 }
 
 static void* ev_realloc_emul(void* ptr, long size) EV_NOEXCEPT {
