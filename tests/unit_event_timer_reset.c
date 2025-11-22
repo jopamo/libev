@@ -8,7 +8,7 @@ static struct event rearm_event;
 static double readd_time;
 static double fired_time;
 
-static void rearm_cb(int fd, short what, void *arg) {
+static void rearm_cb(int fd, short what, void* arg) {
   (void)fd;
   (void)arg;
 
@@ -20,17 +20,17 @@ static void rearm_cb(int fd, short what, void *arg) {
   assert(event_add(&timer_event, &tv) == 0);
 }
 
-static void timer_cb(int fd, short what, void *arg) {
+static void timer_cb(int fd, short what, void* arg) {
   (void)fd;
 
   assert(what & EV_TIMEOUT);
 
   fired_time = ev_time();
-  event_base_loopexit((struct event_base *)arg, NULL);
+  event_base_loopexit((struct event_base*)arg, NULL);
 }
 
 int main(void) {
-  struct event_base *base = event_init();
+  struct event_base* base = event_init();
   assert(base);
 
   struct timeval tv_first = {0, 100000}; /* 100ms */

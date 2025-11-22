@@ -70,7 +70,8 @@ static void set_libev_flags_env(const char* value) {
   if (value) {
     if (_putenv_s("LIBEV_FLAGS", value) != 0)
       die("failed to set LIBEV_FLAGS");
-  } else {
+  }
+  else {
     if (_putenv("LIBEV_FLAGS=") != 0)
       die("failed to unset LIBEV_FLAGS");
   }
@@ -107,7 +108,8 @@ static void set_libev_flags_env(const char* value) {
       perror("setenv");
       exit(EXIT_FAILURE);
     }
-  } else if (unsetenv("LIBEV_FLAGS") != 0 && errno != ENOENT) {
+  }
+  else if (unsetenv("LIBEV_FLAGS") != 0 && errno != ENOENT) {
     perror("unsetenv");
     exit(EXIT_FAILURE);
   }
@@ -133,9 +135,8 @@ static void load_baseline_symbols(void) {
 }
 
 static unsigned int pick_backend(unsigned int supported, unsigned int avoid) {
-  static const unsigned int candidates[] = {
-      EVBACKEND_SELECT, EVBACKEND_POLL,   EVBACKEND_EPOLL, EVBACKEND_KQUEUE,
-      EVBACKEND_PORT,   EVBACKEND_LINUXAIO, EVBACKEND_IOURING};
+  static const unsigned int candidates[] = {EVBACKEND_SELECT, EVBACKEND_POLL,     EVBACKEND_EPOLL,  EVBACKEND_KQUEUE,
+                                            EVBACKEND_PORT,   EVBACKEND_LINUXAIO, EVBACKEND_IOURING};
 
   for (size_t i = 0; i < sizeof(candidates) / sizeof(candidates[0]); ++i) {
     unsigned int bit = candidates[i];
@@ -184,18 +185,15 @@ int main(void) {
   struct ev_loop* loop = must_new_loop(requested_backend);
   unsigned int backend_without_env = ev_backend(loop);
   if (backend_without_env != requested_backend) {
-    fprintf(stderr,
-            "unexpected backend without env override: expected 0x%x got 0x%x\n",
-            requested_backend, backend_without_env);
+    fprintf(stderr, "unexpected backend without env override: expected 0x%x got 0x%x\n", requested_backend,
+            backend_without_env);
     exit(EXIT_FAILURE);
   }
   ev_loop_destroy(loop);
 
   unsigned int env_backend = pick_backend(supported, requested_backend);
   if (!env_backend) {
-    fprintf(stderr,
-            "only one backend (0x%x) available; skipping ENV override checks\n",
-            requested_backend);
+    fprintf(stderr, "only one backend (0x%x) available; skipping ENV override checks\n", requested_backend);
     restore_libev_flags_env(original_env_copy);
     unload_baseline_library();
     free(original_env_copy);
@@ -210,8 +208,7 @@ int main(void) {
   unsigned int backend_with_env = ev_backend(loop);
   ev_loop_destroy(loop);
   if (backend_with_env != env_backend) {
-    fprintf(stderr, "LIBEV_FLAGS failed to override backend: expected 0x%x got 0x%x\n",
-            env_backend, backend_with_env);
+    fprintf(stderr, "LIBEV_FLAGS failed to override backend: expected 0x%x got 0x%x\n", env_backend, backend_with_env);
     exit(EXIT_FAILURE);
   }
 
@@ -219,9 +216,7 @@ int main(void) {
   unsigned int backend_with_noenv = ev_backend(loop);
   ev_loop_destroy(loop);
   if (backend_with_noenv != requested_backend) {
-    fprintf(stderr,
-            "EVFLAG_NOENV failed: backend expected 0x%x got 0x%x\n",
-            requested_backend, backend_with_noenv);
+    fprintf(stderr, "EVFLAG_NOENV failed: backend expected 0x%x got 0x%x\n", requested_backend, backend_with_noenv);
     exit(EXIT_FAILURE);
   }
 

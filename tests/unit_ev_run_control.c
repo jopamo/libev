@@ -84,7 +84,7 @@ static void nested_outer_cb(EV_P_ ev_timer* w, int revents) {
   ev_timer_stop(EV_A_ w);
 
   ev_timer_init(&nested_inner_timer, nested_inner_cb, 0., 0.);
-  ev_timer_start(EV_A_ &nested_inner_timer);
+  ev_timer_start(EV_A_ & nested_inner_timer);
 
   int rc = ev_run(EV_A_ 0);
   if (rc != 0)

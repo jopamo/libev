@@ -61,28 +61,20 @@ static inline int bench_clock_now(struct timespec* ts) {
   return 0;
 }
 
-static inline void bench_print_result(
-  const char* scenario,
-  int iterations,
-  double avg_seconds,
-  int version_major,
-  int version_minor,
-  int runs) {
+static inline void bench_print_result(const char* scenario,
+                                      int iterations,
+                                      double avg_seconds,
+                                      int version_major,
+                                      int version_minor,
+                                      int runs) {
   if (avg_seconds <= 0.0) {
     avg_seconds = 1e-9;
   }
 
   const double per_second = (double)iterations / avg_seconds;
 
-  printf(
-    "scenario=%s version=%d.%d iterations=%d runs=%d avg_seconds=%.6f per_second=%.0f\n",
-    scenario ? scenario : "unknown",
-    version_major,
-    version_minor,
-    iterations,
-    runs,
-    avg_seconds,
-    per_second);
+  printf("scenario=%s version=%d.%d iterations=%d runs=%d avg_seconds=%.6f per_second=%.0f\n",
+         scenario ? scenario : "unknown", version_major, version_minor, iterations, runs, avg_seconds, per_second);
 }
 
 #endif

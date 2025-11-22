@@ -11,18 +11,16 @@ static ev_signal childev;
 
 /* handle a single child status event */
 inline_speed void child_reap(EV_P_ int chain, int pid, int status) EV_NOEXCEPT {
-  ev_child *w;
+  ev_child* w;
   const int traced = WIFSTOPPED(status) || WIFCONTINUED(status);
 
-  for (w = (ev_child *)childs[chain & ((EV_PID_HASHSIZE)-1)]; w; w = (ev_child *)((WL)w)->next) {
+  for (w = (ev_child*)childs[chain & ((EV_PID_HASHSIZE)-1)]; w; w = (ev_child*)((WL)w)->next) {
     if ((w->pid == pid || !w->pid) && (!traced || (w->flags & 1))) {
-      ev_set_priority(
-        w,
-        EV_MAXPRI /* need to do it *now*, this *must* be the same prio as the signal watcher itself */
+      ev_set_priority(w, EV_MAXPRI /* need to do it *now*, this *must* be the same prio as the signal watcher itself */
       );
       w->rpid = pid;
       w->rstatus = status;
-      ev_feed_event(EV_A_(W)w, EV_CHILD);
+      ev_feed_event(EV_A_(W) w, EV_CHILD);
     }
   }
 }
@@ -32,7 +30,7 @@ inline_speed void child_reap(EV_P_ int chain, int pid, int status) EV_NOEXCEPT {
 #endif
 
 /* called on sigchld etc., calls waitpid */
-static void childcb(EV_P_ ev_signal *sw, int revents) {
+static void childcb(EV_P_ ev_signal* sw, int revents) {
   int pid, status;
 
   (void)sw;

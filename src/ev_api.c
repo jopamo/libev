@@ -785,7 +785,6 @@ ecb_noinline ecb_cold static void periodics_reschedule(EV_P) {
       ev_at(w) = w->reschedule_cb(w, ev_rt_now);
     else if (w->interval)
       periodic_recalc(EV_A_ w);
-
   }
 
   if (periodiccnt && !overdue) {
@@ -1461,20 +1460,20 @@ ecb_noinline void ev_signal_start(EV_P_ ev_signal* w) EV_NOEXCEPT {
 
       signal(w->signum, ev_sighandler);
 #else
-    struct sigaction sa;
+      struct sigaction sa;
 
-    evpipe_init(EV_A);
+      evpipe_init(EV_A);
 
-    sa.sa_handler = ev_sighandler;
-    sigfillset(&sa.sa_mask);
-    sa.sa_flags = SA_RESTART; /* if restarting works we save one iteration */
-    sigaction(w->signum, &sa, 0);
+      sa.sa_handler = ev_sighandler;
+      sigfillset(&sa.sa_mask);
+      sa.sa_flags = SA_RESTART; /* if restarting works we save one iteration */
+      sigaction(w->signum, &sa, 0);
 
-    if (origflags & EVFLAG_NOSIGMASK) {
-      sigemptyset(&sa.sa_mask);
-      sigaddset(&sa.sa_mask, w->signum);
-      sigprocmask(SIG_UNBLOCK, &sa.sa_mask, 0);
-    }
+      if (origflags & EVFLAG_NOSIGMASK) {
+        sigemptyset(&sa.sa_mask);
+        sigaddset(&sa.sa_mask, w->signum);
+        sigprocmask(SIG_UNBLOCK, &sa.sa_mask, 0);
+      }
 #endif
     }
   }

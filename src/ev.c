@@ -597,14 +597,14 @@ struct signalfd_siginfo {
 #define EV_TS_CONST(nv) nv
 #define EV_TS_TO_MSEC(a) a * 1e3 + 0.9999
 #define EV_TS_FROM_USEC(us) us * 1e-6
-#define EV_TV_SET(tv, t)                           \
-  do {                                             \
-    (tv).tv_sec = (long)t;                         \
+#define EV_TV_SET(tv, t)                            \
+  do {                                              \
+    (tv).tv_sec = (long)t;                          \
     (tv).tv_usec = (long)((t - (tv).tv_sec) * 1e6); \
   } while (0)
-#define EV_TS_SET(ts, t)                           \
-  do {                                             \
-    (ts).tv_sec = (long)t;                         \
+#define EV_TS_SET(ts, t)                            \
+  do {                                              \
+    (ts).tv_sec = (long)t;                          \
     (ts).tv_nsec = (long)((t - (ts).tv_sec) * 1e9); \
   } while (0)
 #define EV_TV_GET(tv) ((tv).tv_sec + (tv).tv_usec * 1e-6)
@@ -1980,8 +1980,7 @@ inline_size int ev_syscall_ret(long res) {
 #define ev_syscall1(nr, arg1) ev_syscall_ret(syscall((nr), (arg1)))
 #define ev_syscall2(nr, arg1, arg2) ev_syscall_ret(syscall((nr), (arg1), (arg2)))
 #define ev_syscall3(nr, arg1, arg2, arg3) ev_syscall_ret(syscall((nr), (arg1), (arg2), (arg3)))
-#define ev_syscall4(nr, arg1, arg2, arg3, arg4) \
-  ev_syscall_ret(syscall((nr), (arg1), (arg2), (arg3), (arg4)))
+#define ev_syscall4(nr, arg1, arg2, arg3, arg4) ev_syscall_ret(syscall((nr), (arg1), (arg2), (arg3), (arg4)))
 #define ev_syscall5(nr, arg1, arg2, arg3, arg4, arg5) \
   ev_syscall_ret(syscall((nr), (arg1), (arg2), (arg3), (arg4), (arg5)))
 #define ev_syscall6(nr, arg1, arg2, arg3, arg4, arg5, arg6) \
@@ -2296,21 +2295,17 @@ static int ev_default_loop_ptr;
 
 #include "ev_time.c"
 
-
 /*****************************************************************************/
 
 #include "ev_loop_core.c"
-
 
 /*****************************************************************************/
 
 #include "ev_child.c"
 
-
 /*****************************************************************************/
 
 #include "ev_timerfd.c"
-
 
 /*****************************************************************************/
 
@@ -2338,6 +2333,5 @@ static int ev_default_loop_ptr;
 #if EV_USE_SELECT
 #include "ev_select.c"
 #endif
-
 
 #include "ev_api.c"

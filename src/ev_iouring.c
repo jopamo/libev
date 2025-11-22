@@ -228,8 +228,7 @@ inline_speed int iouring_enter(EV_P_ ev_tstamp timeout) {
 
   EV_RELEASE_CB;
 
-  res = evsys_io_uring_enter(iouring_fd, iouring_to_submit, 1,
-                             timeout > EV_TS_CONST(0.) ? IORING_ENTER_GETEVENTS : 0,
+  res = evsys_io_uring_enter(iouring_fd, iouring_to_submit, 1, timeout > EV_TS_CONST(0.) ? IORING_ENTER_GETEVENTS : 0,
                              0, 0);
 
   EV_ASSERT_MSG("libev: io_uring_enter did not consume all sqes", (res < 0 || res == (int)iouring_to_submit));
@@ -402,7 +401,7 @@ ecb_cold static int iouring_internal_init(EV_P) {
       ring_size = iouring_cq_ring_size;
 
     iouring_sq_ring =
-      mmap(0, ring_size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, iouring_fd, IORING_OFF_SQ_RING);
+        mmap(0, ring_size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, iouring_fd, IORING_OFF_SQ_RING);
 
     if (iouring_sq_ring == MAP_FAILED)
       return -1;
@@ -413,17 +412,17 @@ ecb_cold static int iouring_internal_init(EV_P) {
     iouring_single_mmap = 1;
   }
   else {
-    iouring_sq_ring =
-      mmap(0, iouring_sq_ring_size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, iouring_fd, IORING_OFF_SQ_RING);
-    iouring_cq_ring =
-      mmap(0, iouring_cq_ring_size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, iouring_fd, IORING_OFF_CQ_RING);
+    iouring_sq_ring = mmap(0, iouring_sq_ring_size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, iouring_fd,
+                           IORING_OFF_SQ_RING);
+    iouring_cq_ring = mmap(0, iouring_cq_ring_size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, iouring_fd,
+                           IORING_OFF_CQ_RING);
 
     if (iouring_sq_ring == MAP_FAILED || iouring_cq_ring == MAP_FAILED)
       return -1;
   }
 
   iouring_sqes =
-    mmap(0, iouring_sqes_size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, iouring_fd, IORING_OFF_SQES);
+      mmap(0, iouring_sqes_size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, iouring_fd, IORING_OFF_SQES);
 
   if (iouring_sqes == MAP_FAILED)
     return -1;
@@ -590,8 +589,7 @@ inline_size void iouring_process_cqe(EV_P_ struct io_uring_cqe* cqe) {
 
   /* feed events, we do not expect or handle POLLNVAL */
   fd_event(EV_A_ fd,
-           (res & (POLLOUT | POLLERR | POLLHUP) ? EV_WRITE : 0) |
-           (res & (POLLIN | POLLERR | POLLHUP) ? EV_READ : 0));
+           (res & (POLLOUT | POLLERR | POLLHUP) ? EV_WRITE : 0) | (res & (POLLIN | POLLERR | POLLHUP) ? EV_READ : 0));
 
   /* io_uring is oneshot, so we need to re-arm the fd next iteration */
   /* this also means we usually have to do at least one syscall per iteration */

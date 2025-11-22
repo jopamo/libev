@@ -29,19 +29,19 @@ inline_size int array_nextsize(int elem, int cur, int cnt) EV_NOEXCEPT {
   return ncur;
 }
 
-ecb_noinline ecb_cold static void *array_realloc(int elem, void *base, int *cur, int cnt) EV_NOEXCEPT {
+ecb_noinline ecb_cold static void* array_realloc(int elem, void* base, int* cur, int cnt) EV_NOEXCEPT {
   *cur = array_nextsize(elem, *cur, cnt);
   return ev_realloc(base, elem * *cur);
 }
 
 #define array_needsize_noinit(base, offset, count)
 
-#define array_needsize_zerofill(base, offset, count) memset((void *)(base + offset), 0, sizeof(*(base)) * (count))
+#define array_needsize_zerofill(base, offset, count) memset((void*)(base + offset), 0, sizeof(*(base)) * (count))
 
 #define array_needsize(type, base, cur, cnt, init)                      \
   if (ecb_expect_false((cnt) > (cur))) {                                \
     ecb_unused int ocur_ = (cur);                                       \
-    (base) = (type *)array_realloc(sizeof(type), (base), &(cur), (cnt)); \
+    (base) = (type*)array_realloc(sizeof(type), (base), &(cur), (cnt)); \
     init((base), ocur_, ((cur) - ocur_));                               \
   }
 
@@ -62,13 +62,13 @@ ecb_noinline ecb_cold static void *array_realloc(int elem, void *base, int *cur,
 /*****************************************************************************/
 
 /* dummy callback for pending events */
-ecb_noinline static void pendingcb(EV_P_ ev_prepare *w, int revents) {
+ecb_noinline static void pendingcb(EV_P_ ev_prepare* w, int revents) {
   (void)loop;
   (void)w;
   (void)revents;
 }
 
-ecb_noinline void ev_feed_event(EV_P_ void *w, int revents) EV_NOEXCEPT {
+ecb_noinline void ev_feed_event(EV_P_ void* w, int revents) EV_NOEXCEPT {
   W w_ = (W)w;
   int pri = ABSPRI(w_);
 
@@ -95,7 +95,7 @@ inline_size void feed_reverse_done(EV_P_ int revents) {
   while (rfeedcnt);
 }
 
-inline_speed void queue_events(EV_P_ W *events, int eventcnt, int type) {
+inline_speed void queue_events(EV_P_ W* events, int eventcnt, int type) {
   int i;
 
   for (i = 0; i < eventcnt; ++i)
@@ -105,21 +105,21 @@ inline_speed void queue_events(EV_P_ W *events, int eventcnt, int type) {
 /*****************************************************************************/
 
 inline_speed void fd_event_nocheck(EV_P_ int fd, int revents) {
-  ANFD *anfd = anfds + fd;
-  ev_io *w;
+  ANFD* anfd = anfds + fd;
+  ev_io* w;
 
-  for (w = (ev_io *)anfd->head; w; w = (ev_io *)((WL)w)->next) {
+  for (w = (ev_io*)anfd->head; w; w = (ev_io*)((WL)w)->next) {
     int ev = w->events & revents;
 
     if (ev)
-      ev_feed_event(EV_A_(W)w, ev);
+      ev_feed_event(EV_A_(W) w, ev);
   }
 }
 
 /* do not submit kernel events for fds that have reify set */
 /* because that means they changed while we were polling for new events */
 inline_speed void fd_event(EV_P_ int fd, int revents) {
-  ANFD *anfd = anfds + fd;
+  ANFD* anfd = anfds + fd;
 
   if (ecb_expect_true(!anfd->reify))
     fd_event_nocheck(EV_A_ fd, revents);
@@ -150,13 +150,12 @@ inline_size void fd_reify(EV_P) {
 #if EV_SELECT_IS_WINSOCKET || EV_USE_IOCP
   for (i = 0; i < changecnt; ++i) {
     int fd = fdchanges[i];
-    ANFD *anfd = anfds + fd;
+    ANFD* anfd = anfds + fd;
 
     if (anfd->reify & EV__IOFDSET && anfd->head) {
       SOCKET handle = EV_FD_TO_WIN32_HANDLE(fd);
 
-      EV_ASSERT_MSG("libev: only socket fds supported in this configuration",
-                    ioctlsocket(handle, FIONREAD, &arg) == 0);
+      EV_ASSERT_MSG("libev: only socket fds supported in this configuration", ioctlsocket(handle, FIONREAD, &arg) == 0);
 
       /* handle changed, but fd didn't - we need to do it in two steps */
       backend_modify(EV_A_ fd, anfd->events, 0);
@@ -168,8 +167,8 @@ inline_size void fd_reify(EV_P) {
 
   for (i = 0; i < changecnt; ++i) {
     int fd = fdchanges[i];
-    ANFD *anfd = anfds + fd;
-    ev_io *w;
+    ANFD* anfd = anfds + fd;
+    ev_io* w;
 
     unsigned char o_events = anfd->events;
     unsigned int o_reify = anfd->reify;
@@ -180,7 +179,7 @@ inline_size void fd_reify(EV_P) {
     {
       anfd->events = 0;
 
-      for (w = (ev_io *)anfd->head; w; w = (ev_io *)((WL)w)->next)
+      for (w = (ev_io*)anfd->head; w; w = (ev_io*)((WL)w)->next)
         anfd->events |= (unsigned char)w->events;
 
       if (o_events != anfd->events)
@@ -215,11 +214,11 @@ inline_size void fd_change(EV_P_ int fd, int flags) {
 
 /* the given fd is invalid/unusable, so make sure it doesn't hurt us anymore */
 inline_speed ecb_cold void fd_kill(EV_P_ int fd) {
-  ev_io *w;
+  ev_io* w;
 
-  while ((w = (ev_io *)anfds[fd].head)) {
+  while ((w = (ev_io*)anfds[fd].head)) {
     ev_io_stop(EV_A_ w);
-    ev_feed_event(EV_A_(W)w, EV_ERROR | EV_READ | EV_WRITE);
+    ev_feed_event(EV_A_(W) w, EV_ERROR | EV_READ | EV_WRITE);
   }
 }
 
@@ -299,14 +298,14 @@ inline_speed void fd_intern(int fd) {
 #define UPHEAP_DONE(p, k) ((p) == (k))
 
 /* away from the root */
-inline_speed void downheap(ANHE *heap, int N, int k) {
+inline_speed void downheap(ANHE* heap, int N, int k) {
   ANHE he = heap[k];
-  ANHE *E = heap + N + HEAP0;
+  ANHE* E = heap + N + HEAP0;
 
   for (;;) {
     ev_tstamp minat;
-    ANHE *minpos;
-    ANHE *pos = heap + DHEAP * (k - HEAP0) + HEAP0 + 1;
+    ANHE* minpos;
+    ANHE* pos = heap + DHEAP * (k - HEAP0) + HEAP0 + 1;
 
     /* find minimum child */
     if (ecb_expect_true(pos + DHEAP - 1 < E)) {
@@ -350,7 +349,7 @@ inline_speed void downheap(ANHE *heap, int N, int k) {
 #define UPHEAP_DONE(p, k) (!(p))
 
 /* away from the root */
-inline_speed void downheap(ANHE *heap, int N, int k) {
+inline_speed void downheap(ANHE* heap, int N, int k) {
   ANHE he = heap[k];
 
   for (;;) {
@@ -376,7 +375,7 @@ inline_speed void downheap(ANHE *heap, int N, int k) {
 #endif
 
 /* towards the root */
-inline_speed void upheap(ANHE *heap, int k) {
+inline_speed void upheap(ANHE* heap, int k) {
   ANHE he = heap[k];
 
   for (;;) {
@@ -395,7 +394,7 @@ inline_speed void upheap(ANHE *heap, int k) {
 }
 
 /* move an element suitably so it is in a correct place */
-inline_size void adjustheap(ANHE *heap, int N, int k) {
+inline_size void adjustheap(ANHE* heap, int N, int k) {
   if (k > HEAP0 && ANHE_at(heap[k]) <= ANHE_at(heap[HPARENT(k)]))
     upheap(heap, k);
   else
@@ -403,7 +402,7 @@ inline_size void adjustheap(ANHE *heap, int N, int k) {
 }
 
 /* rebuild the heap: this function is used only once and executed rarely */
-inline_size void reheap(ANHE *heap, int N) {
+inline_size void reheap(ANHE* heap, int N) {
   int i;
 
   /* we don't use floyds algorithm, upheap is simpler and is more cache-efficient */
@@ -465,12 +464,12 @@ ecb_noinline ecb_cold static void evpipe_init(EV_P) {
     fd_intern(evpipe[1]);
 
     ev_io_set(&pipe_w, evpipe[0] < 0 ? evpipe[1] : evpipe[0], EV_READ);
-    ev_io_start(EV_A_ &pipe_w);
+    ev_io_start(EV_A_ & pipe_w);
     ev_unref(EV_A); /* watcher should not keep loop alive */
   }
 }
 
-inline_speed void evpipe_write(EV_P_ EV_ATOMIC_T *flag) {
+inline_speed void evpipe_write(EV_P_ EV_ATOMIC_T* flag) {
   ECB_MEMORY_FENCE; /* push out the write before this function was called, acquire flag */
 
   if (ecb_expect_true(*flag))
@@ -502,7 +501,7 @@ inline_speed void evpipe_write(EV_P_ EV_ATOMIC_T *flag) {
 #ifdef _WIN32
       WSABUF buf;
       DWORD sent;
-      buf.buf = (char *)&buf;
+      buf.buf = (char*)&buf;
       buf.len = 1;
       WSASend(EV_FD_TO_WIN32_HANDLE(evpipe[1]), &buf, 1, &sent, 0, 0, 0);
 #else
@@ -516,7 +515,7 @@ inline_speed void evpipe_write(EV_P_ EV_ATOMIC_T *flag) {
 
 /* called whenever the libev signal pipe */
 /* got some events (signal, async) */
-static void pipecb(EV_P_ ev_io *iow, int revents) {
+static void pipecb(EV_P_ ev_io* iow, int revents) {
   int i;
 
   (void)iow;
@@ -589,7 +588,7 @@ void ev_feed_signal(int signum) EV_NOEXCEPT {
 #endif
 
   signals[signum - 1].pending = 1;
-  evpipe_write(EV_A_ &sig_pending);
+  evpipe_write(EV_A_ & sig_pending);
 }
 
 static void ev_sighandler(int signum) {
@@ -620,11 +619,11 @@ ecb_noinline void ev_feed_signal_event(EV_P_ int signum) EV_NOEXCEPT {
   ECB_MEMORY_FENCE_RELEASE;
 
   for (w = signals[signum].head; w; w = w->next)
-    ev_feed_event(EV_A_(W)w, EV_SIGNAL);
+    ev_feed_event(EV_A_(W) w, EV_SIGNAL);
 }
 
 #if EV_USE_SIGNALFD
-static void sigfdcb(EV_P_ ev_io *iow, int revents) {
+static void sigfdcb(EV_P_ ev_io* iow, int revents) {
   struct signalfd_siginfo si[2], *sip; /* these structs are big */
 
   (void)iow;
@@ -632,15 +631,15 @@ static void sigfdcb(EV_P_ ev_io *iow, int revents) {
 
   for (;;) {
     ssize_t res;
-    char *end;
+    char* end;
 
     res = read(sigfd, si, sizeof(si));
     if (res <= 0)
       break;
 
-    end = (char *)si + res;
+    end = (char*)si + res;
 
-    for (sip = si; (char *)sip + (ptrdiff_t)sizeof(*sip) <= end; ++sip)
+    for (sip = si; (char*)sip + (ptrdiff_t)sizeof(*sip) <= end; ++sip)
       ev_feed_signal_event(EV_A_ sip->ssi_signo);
 
     if (res < (ssize_t)sizeof(si))
