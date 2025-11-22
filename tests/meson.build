@@ -66,6 +66,8 @@ test(
     files('run_backend_perf.py'),
     '--lib',
     libev.full_path(),
+    '--baseline-lib',
+    orig_libev.full_path(),
     '--perf-compare-script',
     perf_compare_script,
   ] + backend_perf_args,

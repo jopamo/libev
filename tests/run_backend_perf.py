@@ -5,9 +5,10 @@ import ctypes
 import os
 import subprocess
 import sys
-from typing import List, Sequence, Tuple
+from typing import List, Sequence, Set, Tuple
 
 EVFLAG_NOENV = 0x01000000
+BACKEND_PROBE_TIMEOUT = 5.0
 BACKENDS: Sequence[Tuple[str, int]] = (
     ("select", 0x01),
     ("poll", 0x02),
@@ -25,6 +26,10 @@ def parse_args() -> argparse.Namespace:
         description="Run perf_compare for every available libev backend."
     )
     parser.add_argument("--lib", required=True, help="Path to libev shared library.")
+    parser.add_argument(
+        "--baseline-lib",
+        help="Optional path to the baseline libev shared library used by the perf benchmarks.",
+    )
     parser.add_argument(
         "--perf-compare-script",
         required=True,
@@ -48,19 +53,54 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
+def probe_backend(lib_path: str, flag: int) -> bool:
+    helper = f"""
+import ctypes
+import sys
+EVFLAG_NOENV = {EVFLAG_NOENV}
+lib = ctypes.CDLL({lib_path!r})
+lib.ev_loop_new.argtypes = [ctypes.c_uint]
+lib.ev_loop_new.restype = ctypes.c_void_p
+lib.ev_loop_destroy.argtypes = [ctypes.c_void_p]
+lib.ev_loop_destroy.restype = None
+lib.ev_backend.argtypes = [ctypes.c_void_p]
+lib.ev_backend.restype = ctypes.c_uint
+loop = lib.ev_loop_new({flag} | EVFLAG_NOENV)
+if not loop:
+    sys.exit(1)
+backend = lib.ev_backend(loop)
+lib.ev_loop_destroy(loop)
+if backend & {flag}:
+    sys.exit(0)
+sys.exit(1)
+"""
+    try:
+        subprocess.run(
+            [sys.executable, "-c", helper], check=True, timeout=BACKEND_PROBE_TIMEOUT
+        )
+    except subprocess.TimeoutExpired:
+        return False
+    except subprocess.CalledProcessError:
+        return False
+    return True
+
+
 def discover_available_backends(lib_path: str) -> List[Tuple[str, int]]:
     lib = ctypes.CDLL(lib_path)
-    lib.ev_loop_new.argtypes = [ctypes.c_uint]
-    lib.ev_loop_new.restype = ctypes.c_void_p
-    lib.ev_loop_destroy.argtypes = [ctypes.c_void_p]
-    lib.ev_loop_destroy.restype = None
+    lib.ev_supported_backends.restype = ctypes.c_uint
+    supported_mask = lib.ev_supported_backends()
 
-    available = []
+    available: List[Tuple[str, int]] = []
     for name, flag in BACKENDS:
-        loop = lib.ev_loop_new(flag | EVFLAG_NOENV)
-        if loop:
-            lib.ev_loop_destroy(loop)
+        if not (supported_mask & flag):
+            continue
+        if probe_backend(lib_path, flag):
             available.append((name, flag))
+        else:
+            print(
+                f"[{os.path.basename(lib_path)}] skipping backend {name} (probe failed)",
+                flush=True,
+            )
     return available
 
 
@@ -90,7 +130,22 @@ def run_perf_compare(
 
 def main() -> None:
     args = parse_args()
-    available_backends = discover_available_backends(args.lib)
+    local_backends = discover_available_backends(args.lib)
+    available_backends = list(local_backends)
+
+    if args.baseline_lib:
+        baseline_backends = discover_available_backends(args.baseline_lib)
+        baseline_flags: Set[int] = {flag for _, flag in baseline_backends}
+        available_backends = [
+            (name, flag) for name, flag in local_backends if flag in baseline_flags
+        ]
+        missing = [name for name, flag in local_backends if flag not in baseline_flags]
+        if missing:
+            print(
+                "Skipping backends unavailable in baseline: " + ", ".join(missing),
+                flush=True,
+            )
+
     if not available_backends:
         print("No libev backends available; nothing to run.")
         return
