@@ -4,7 +4,7 @@ We need to port coverage expectations from the original libev 4.33 implementatio
 
 ## Loop Lifecycle & Flags
 - [x] **Backend flags & selection** — Assert `ev_supported_backends`, `ev_recommended_backends`, and `ev_embeddable_backends` return the same bitmasks as `libev-4.33`, and that `EVFLAG_NOENV`/`LIBEV_FLAGS` override backend selection (src/ev_api.c:59-225, include/ev.h:484-517). Covered by `tests/unit_backend_flags.c`.
-- [ ] **Default loop & alternates** — Cover creation/destruction (`ev_default_loop`, `ev_loop_new`, `ev_loop_destroy`) ensuring only the default loop handles signals/children and that cleanup watchers run on destroy (src/ev_api.c:269-425, 595-617).
+- [x] **Default loop & alternates** — Cover creation/destruction (`ev_default_loop`, `ev_loop_new`, `ev_loop_destroy`) ensuring only the default loop handles signals/children and that cleanup watchers run on destroy (src/ev_api.c:269-425, 595-617). Covered by `tests/unit_loop_lifecycle.c`.
 - [ ] **`ev_run` control flow** — Validate `EVRUN_NOWAIT`, `EVRUN_ONCE`, `ev_break` cancel/one/all modes, and `loop_count`/`loop_depth` accounting exposed via `EV_FEATURE_API` (src/ev_api.c:879-1104).
 - [ ] **Refcount & pending hooks** — Exercise `ev_ref`, `ev_unref`, `ev_pending_count`, `ev_set_invoke_pending_cb`, `ev_set_loop_release_cb`, and `ev_set_userdata` to ensure refcounts and callback plumbing match upstream (src/ev_api.c:135-158, 630-657, 1140-1179).
 - [ ] **Clock maintenance** — Verify `ev_now_update`, `ev_suspend`, `ev_resume`, and large time jumps adjust timers/periodics without duplicate firings via `timers_reschedule`/`periodics_reschedule` (src/ev_api.c:768-876, 1101-1117).
