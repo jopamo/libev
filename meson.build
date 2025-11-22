@@ -10,6 +10,9 @@ project(
 cc = meson.get_compiler('c')
 host_system = host_machine.system()
 
+linuxaio_opt = get_option('linuxaio')
+iouring_opt = get_option('iouring')
+
 m_dep = cc.find_library('m', required: false)
 rt_dep = cc.find_library('rt', required: false)
 lib_deps = []
@@ -50,13 +53,29 @@ header_checks = {
   'HAVE_SYS_SELECT_H': 'sys/select.h',
   'HAVE_SYS_EVENTFD_H': 'sys/eventfd.h',
   'HAVE_SYS_SIGNALFD_H': 'sys/signalfd.h',
-  'HAVE_LINUX_AIO_ABI_H': 'linux/aio_abi.h',
-  'HAVE_LINUX_FS_H': 'linux/fs.h',
 }
 
 foreach macro, header : header_checks
   conf.set10(macro, cc.has_header(header))
 endforeach
+
+linuxaio_header = false
+if not linuxaio_opt.disabled()
+  linuxaio_header = cc.has_header('linux/aio_abi.h')
+  if linuxaio_opt.enabled() and not linuxaio_header
+    error('linuxaio backend requested, but linux/aio_abi.h not found')
+  endif
+endif
+conf.set10('HAVE_LINUX_AIO_ABI_H', linuxaio_header)
+
+iouring_header = false
+if not iouring_opt.disabled()
+  iouring_header = cc.has_header('linux/fs.h')
+  if iouring_opt.enabled() and not iouring_header
+    error('io_uring backend requested, but linux/fs.h not found')
+  endif
+endif
+conf.set10('HAVE_LINUX_FS_H', iouring_header)
 
 func_checks = {
   'HAVE_INOTIFY_INIT': ['inotify_init', '#include <sys/inotify.h>'],
@@ -132,7 +151,15 @@ kernel_rwf_check = '''
   }
 '''
 
-conf.set10('HAVE_KERNEL_RWF_T', cc.compiles(kernel_rwf_check, name: 'kernel_rwf_t'))
+have_kernel_rwf = false
+if iouring_header and not iouring_opt.disabled()
+  have_kernel_rwf = cc.compiles(kernel_rwf_check, name: 'kernel_rwf_t')
+  if iouring_opt.enabled() and not have_kernel_rwf
+    error('__kernel_rwf_t missing while io_uring backend was requested')
+  endif
+endif
+
+conf.set10('HAVE_KERNEL_RWF_T', have_kernel_rwf)
 
 if use_librt and rt_dep.found()
   conf.set10('HAVE_LIBRT', true)

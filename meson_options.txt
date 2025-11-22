@@ -1,0 +1,14 @@
+option(
+  'linuxaio',
+  type: 'feature',
+  value: 'disabled',
+  description: 'Enable the Linux AIO backend (requires linux/aio_abi.h)'
+)
+
+option(
+  'iouring',
+  type: 'feature',
+  value: 'disabled',
+  description: 'Enable the io_uring backend (requires linux/fs.h)'
+)
+
