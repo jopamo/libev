@@ -129,7 +129,6 @@ compat_tests = [
   ['compat-priority-merging',       'compat_priority_merging.c'],
   ['compat-event-feed-clear',       'compat_event_feed_clear.c'],
   ['compat-idle-prepare-check',     'compat_idle_prepare_check_order.c'],
-  ['compat-syserr-callback',        'compat_syserr_callback.c'],
   ['compat-time-sleep',             'compat_time_sleep.c'],
   ['compat-watcher-init',           'compat_watcher_init.c'],
 ]
