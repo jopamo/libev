@@ -133,6 +133,16 @@ static void timeout_cb(struct ev_loop* loop, ev_timer* w, int revents) {
   ev_break(loop, EVBREAK_ALL);
 }
 
+static void reentrant_io_cb_with_feed(struct ev_loop* loop, ev_io* w, int revents) {
+    (void)loop;
+    (void)revents;
+    test_context_t* ctx = (test_context_t*)w->data;
+    (*ctx->callback_count)++;
+    
+    // Feed an event on the same fd to test reify protection
+    ev_feed_fd_event(loop, w->fd, EV_READ);
+}
+
 static void test_reify_flag_handling(void) {
     struct ev_loop* loop = ev_loop_new(0);
     if (!loop)
@@ -142,37 +152,26 @@ static void test_reify_flag_handling(void) {
     if (pipe(pipe_fds) == -1)
         die("pipe creation failed");
     
-    // This test is tricky because the reify flag is internal
-    // We can test that events are processed normally when reify is not set
+    // Test that reify flag prevents multiple processing in the same iteration
     int callback_count = 0;
     test_context_t ctx = { &callback_count, pipe_fds };
     
     ev_io watcher;
-    ev_init(&watcher, io_cb);
+    ev_init(&watcher, reentrant_io_cb_with_feed);
     watcher.data = &ctx;
     
     ev_io_set(&watcher, pipe_fds[0], EV_READ);
     ev_io_start(loop, &watcher);
     
-    // Write to trigger an event
-    if (write(pipe_fds[1], "test", 4) != 4)
-        die("write failed");
-    
-    // Run once to process the event
-    ev_run(loop, EVRUN_ONCE);
-    
-    // Callback should be called
-    if (callback_count != 1)
-        die("callback should have been called once");
-    
-    // Now test ev_feed_fd_event directly
-    callback_count = 0;
+    // Feed an event - the callback will feed another event
     ev_feed_fd_event(loop, pipe_fds[0], EV_READ);
+    
+    // Run once - the callback should be called only once despite the re-feed
     ev_run(loop, EVRUN_ONCE);
     
-    // Callback should be called again
+    // Callback should be called exactly once due to reify protection
     if (callback_count != 1)
-        die("callback should have been called once after ev_feed_fd_event");
+        die("callback should have been called exactly once due to reify protection");
     
     // Clean up
     ev_io_stop(loop, &watcher);
@@ -252,11 +251,65 @@ static void test_ev_feed_fd_event(void) {
     ev_loop_destroy(loop);
 }
 
+static void mutation_cb(struct ev_loop* loop, ev_io* w, int revents) {
+    (void)revents;
+    test_context_t* ctx = (test_context_t*)w->data;
+    (*ctx->callback_count)++;
+    
+    // Stop current watcher and start a new one on the same fd
+    ev_io_stop(loop, w);
+    ev_io_set(w, w->fd, EV_READ);
+    ev_io_start(loop, w);
+}
+
+static void test_watcher_mutation_during_callback(void) {
+    struct ev_loop* loop = ev_loop_new(0);
+    if (!loop)
+        die("ev_loop_new failed");
+    
+    int pipe_fds[2];
+    if (pipe(pipe_fds) == -1)
+        die("pipe creation failed");
+    
+    int callback_count = 0;
+    test_context_t ctx = { &callback_count, pipe_fds };
+    
+    ev_io watcher;
+    ev_init(&watcher, mutation_cb);
+    watcher.data = &ctx;
+    
+    ev_io_set(&watcher, pipe_fds[0], EV_READ);
+    ev_io_start(loop, &watcher);
+    
+    // Feed an event
+    ev_feed_fd_event(loop, pipe_fds[0], EV_READ);
+    ev_run(loop, EVRUN_ONCE);
+    
+    // Callback should be called once
+    if (callback_count != 1)
+        die("callback should have been called exactly once");
+    
+    // Feed another event to ensure the watcher is still active
+    ev_feed_fd_event(loop, pipe_fds[0], EV_READ);
+    ev_run(loop, EVRUN_ONCE);
+    
+    // Callback should be called again
+    if (callback_count != 2)
+        die("callback should have been called twice");
+    
+    // Clean up
+    ev_io_stop(loop, &watcher);
+    close(pipe_fds[0]);
+    close(pipe_fds[1]);
+    ev_loop_destroy(loop);
+}
+
 int main(void) {
     test_fd_event_and_reify();
     test_ev_feed_fd_event();
     test_reentrant_fd_modification();
     test_reify_flag_handling();
+    test_watcher_mutation_during_callback();
     
     printf("All FD bookkeeping tests passed!\n");
     return EXIT_SUCCESS;
